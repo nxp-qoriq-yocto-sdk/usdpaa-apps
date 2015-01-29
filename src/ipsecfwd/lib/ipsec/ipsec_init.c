@@ -28,8 +28,12 @@
 #include "ipsec/ipsec_decap.h"
 #include "ipsec/ipsec_sec.h"
 
+#include <flib/rta.h>
+
 #define ENTRIES 1024
 #define ENTRIES_POOL_SIZE (ENTRIES << 1)
+
+extern unsigned char def_auth_key[];
 
 int32_t ipsec_config_create(void)
 {
@@ -314,11 +318,17 @@ int32_t ipsec_tunnel_create(struct ipsec_tunnel_config_entry_t *config,
 			    struct ipsec_stack_t *ipsec_stack,
 			    uint32_t *next_hop_addr, uint32_t mode)
 {
-	config->aalg->alg_key_ptr = g_split_key;
-	if (rta_sec_era > RTA_SEC_ERA_5)
-		config->aalg->alg_key_len = 20;
-	else
+	/*
+	 * Use DKP (Derived Key Protocol) to compute split key
+	 * for SEC Era 6+ platforms.
+	 */
+	if (rta_sec_era < RTA_SEC_ERA_6) {
+		config->aalg->alg_key_ptr = g_split_key;
 		config->aalg->alg_key_len = 40;
+	} else {
+		config->aalg->alg_key_ptr = (char *)def_auth_key;
+		config->aalg->alg_key_len = 20;
+	}
 
 	if (mode == ENCRYPT) {
 		return ipsec_tunnel_encap_init(config, next_hop_addr,

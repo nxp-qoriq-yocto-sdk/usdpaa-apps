@@ -160,8 +160,18 @@ static int init_ref_test_vector_ipsec(struct test_param *crypto_info)
 	const int proto_offset = IPSEC_TEST_ARRAY_OFFSET(ipsec_params);
 
 	rtv->auth_alginfo = OP_PCL_IPSEC_HMAC_MD5_96;
-	rtv->auth_key = (uintptr_t)ipsec_test_auth_key[proto_offset];
-	rtv->auth_keylen = ipsec_test_auth_keylen[proto_offset];
+	/*
+	 * Use DKP (Derived Key Protocol) to compute split key
+	 * for SEC Era 6+ platforms.
+	 */
+	if (rta_sec_era < RTA_SEC_ERA_6) {
+		rtv->auth_key =
+			(uintptr_t)ipsec_test_auth_split_key[proto_offset];
+		rtv->auth_keylen = ipsec_test_auth_split_keylen[proto_offset];
+	} else {
+		rtv->auth_key = (uintptr_t)ipsec_test_auth_key[proto_offset];
+		rtv->auth_keylen = ipsec_test_auth_keylen[proto_offset];
+	}
 
 	rtv->cipher_alginfo = OP_PCL_IPSEC_3DES;
 	rtv->key = (uintptr_t)ipsec_test_cipher_key[proto_offset];
