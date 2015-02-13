@@ -29,19 +29,36 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac classifier_demo cpu_hotplug dma_test fra fragmentation_demo \
-	  hello_reflector ipfwd ipsecfwd ipsec_offload lpm-ipfwd
+bin_PROGRAMS = lpm_ipfwd_config
+dist_DATA = lpm_ipfwd_22G.sh lpm_ipfwd_20G.sh lpm_ipfwd_14G.sh \
+	lpm_ipfwd_20G_1Mroutes.sh lpm_ipfwd_40G.sh lpm_ipfwd_42G.sh \
+	lpm_ipfwd_7G.sh lpm_ipfwd_t2080_42G.sh lpm_ipfwd_t2080_22G.sh \
+	lpm_ipfwd_t1024_12G.sh
 
-ifeq (B4860,$(SOC))
-ifeq (powerpc,$(ARCH))
-SUBDIRS += dsp_dpa
-endif
-endif
+AM_CFLAGS := -I$(TOP_LEVEL)/src/lpm-ipfwd/lib -I$(TOP_LEVEL)/src/lpm-ipfwd/include
 
-ifneq (,$(findstring $(SOC),B4860 T4240 T2080))
-SUBDIRS += ceetm_demo
-endif
+lpm_ipfwd_config_SOURCES := ipc_send.c
+lpm_ipfwd_config_sys_LDADD := rt
 
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+lpm_ipfwd_22G.sh_install = $(INSTALL_BIN)
+lpm_ipfwd_22G.sh_install_flags = $(INSTALL_BIN_FLAGS)
+lpm_ipfwd_20G.sh_install = $(INSTALL_BIN)
+lpm_ipfwd_20G.sh_install_flags = $(INSTALL_BIN_FLAGS)
+lpm_ipfwd_14G.sh_install = $(INSTALL_BIN)
+lpm_ipfwd_14G.sh_install_flags = $(INSTALL_BIN_FLAGS)
+lpm_ipfwd_20G_1Mroutes.sh_install = $(INSTALL_BIN)
+lpm_ipfwd_20G_1Mroutes.sh_install_flags = $(INSTALL_BIN_FLAGS)
+lpm_ipfwd_40G.sh_install = $(INSTALL_BIN)
+lpm_ipfwd_40G.sh_install_flags = $(INSTALL_BIN_FLAGS)
+lpm_ipfwd_42G.sh_install = $(INSTALL_BIN)
+lpm_ipfwd_42G.sh_install_flags = $(INSTALL_BIN_FLAGS)
+lpm_ipfwd_7G.sh_install_flags = $(INSTALL_BIN_FLAGS)
+lpm_ipfwd_7G.sh_install = $(INSTALL_BIN)
+lpm_ipfwd_t2080_42G.sh_install = $(INSTALL_BIN)
+lpm_ipfwd_t2080_42G.sh_install_flags = $(INSTALL_BIN_FLAGS)
+lpm_ipfwd_t4240_48G.sh_install = $(INSTALL_BIN)
+lpm_ipfwd_t4240_48G.sh_install_flags = $(INSTALL_BIN_FLAGS)
+lpm_ipfwd_t2080_22G.sh_install = $(INSTALL_BIN)
+lpm_ipfwd_t2080_22G.sh_install_flags = $(INSTALL_BIN_FLAGS)
+lpm_ipfwd_t1024_12G.sh_install = $(INSTALL_BIN)
+lpm_ipfwd_t1024_12G.sh_install_flags = $(INSTALL_BIN_FLAGS)

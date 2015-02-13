@@ -29,19 +29,14 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac classifier_demo cpu_hotplug dma_test fra fragmentation_demo \
-	  hello_reflector ipfwd ipsecfwd ipsec_offload lpm-ipfwd
+bin_PROGRAMS = lpm_ipfwd_app
 
-ifeq (B4860,$(SOC))
-ifeq (powerpc,$(ARCH))
-SUBDIRS += dsp_dpa
-endif
-endif
+AM_CFLAGS := -I$(TOP_LEVEL)/src/lpm-ipfwd/lib -I$(TOP_LEVEL)/src/lpm-ipfwd/include -I$(TOP_LEVEL)/lib
 
-ifneq (,$(findstring $(SOC),B4860 T4240 T2080))
-SUBDIRS += ceetm_demo
-endif
-
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+lpm_ipfwd_app_SOURCES :=  lpm-ipfwd.c
+lpm_ipfwd_app_LDADD := usdpaa_ppac usdpaa_qbman usdpaa_fman usdpaa_dma_mem \
+		       usdpaa_of usdpaa_process usdpaa_syscfg usdpaa_mm \
+		       app_lpm_net app_lpm_ethernet app_lpm_ip \
+		       app_lpm_arp app_refcount usdpaa_syscfg
+lpm_ipfwd_app_sys_LDADD := rt
+lpm_ipfwd_app_LDFLAGS := $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) -T $(TOP_LEVEL)/src/ppac/ppac.lds
