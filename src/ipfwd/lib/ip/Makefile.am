@@ -29,19 +29,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac classifier_demo cpu_hotplug dma_test fra fragmentation_demo \
-	  hello_reflector ipfwd
+lib_LIBRARIES = app_rc_ip
 
-ifeq (B4860,$(SOC))
-ifeq (powerpc,$(ARCH))
-SUBDIRS += dsp_dpa
-endif
-endif
+AM_CFLAGS := -I$(TOP_LEVEL)/src/ipfwd/include  -I$(TOP_LEVEL)/src/ipfwd/lib -I$(TOP_LEVEL)/lib -I$(TOP_LEVEL)/lib/ip
 
-ifneq (,$(findstring $(SOC),B4860 T4240 T2080))
-SUBDIRS += ceetm_demo
-endif
-
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+app_rc_ip_SOURCES := ip_route.c ../../../../lib/ip/ip_rc.c ../../../../lib/ip/ip_forward.c ../../../../lib/ip/ip_output.c ../../../../lib/ip/ip_handler.c ../../../../lib/ip/ip_local.c ../../../../lib/ip/ip_protos.c

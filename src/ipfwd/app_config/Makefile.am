@@ -29,19 +29,35 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac classifier_demo cpu_hotplug dma_test fra fragmentation_demo \
-	  hello_reflector ipfwd
+bin_PROGRAMS = ipfwd_config
+dist_DATA = ipfwd_22G.sh ipfwd_20G.sh ipfwd_14G.sh ipfwd_20G_1Mroutes.sh \
+	    ipfwd_40G.sh ipfwd_42G.sh ipfwd_t1040_8G.sh ipfwd_t4240_48G.sh \
+	    ipfwd_t2080_22G.sh ipfwd_t2080_42G.sh ipfwd_t1024_12G.sh
 
-ifeq (B4860,$(SOC))
-ifeq (powerpc,$(ARCH))
-SUBDIRS += dsp_dpa
-endif
-endif
+AM_CFLAGS := -I$(TOP_LEVEL)/src/ipfwd/lib -I$(TOP_LEVEL)/src/ipfwd/include
 
-ifneq (,$(findstring $(SOC),B4860 T4240 T2080))
-SUBDIRS += ceetm_demo
-endif
+ipfwd_config_SOURCES := ipc_send.c
+ipfwd_config_sys_LDADD := rt
 
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+ipfwd_22G.sh_install = $(INSTALL_BIN)
+ipfwd_22G.sh_install_flags = $(INSTALL_BIN_FLAGS)
+ipfwd_20G.sh_install = $(INSTALL_BIN)
+ipfwd_20G.sh_install_flags = $(INSTALL_BIN_FLAGS)
+ipfwd_14G.sh_install = $(INSTALL_BIN)
+ipfwd_14G.sh_install_flags = $(INSTALL_BIN_FLAGS)
+ipfwd_20G_1Mroutes.sh_install = $(INSTALL_BIN)
+ipfwd_20G_1Mroutes.sh_install_flags = $(INSTALL_BIN_FLAGS)
+ipfwd_40G.sh_install = $(INSTALL_BIN)
+ipfwd_40G.sh_install_flags = $(INSTALL_BIN_FLAGS)
+ipfwd_42G.sh_install = $(INSTALL_BIN)
+ipfwd_42G.sh_install_flags = $(INSTALL_BIN_FLAGS)
+ipfwd_t1040_8G.sh_install = $(INSTALL_BIN)
+ipfwd_t1040_8G.sh_install_flags = $(INSTALL_BIN_FLAGS)
+ipfwd_t2080_22G.sh_install = $(INSTALL_BIN)
+ipfwd_t2080_22G.sh_install_flags = $(INSTALL_BIN_FLAGS)
+ipfwd_t2080_42G.sh_install = $(INSTALL_BIN)
+ipfwd_t2080_42G.sh_install_flags = $(INSTALL_BIN_FLAGS)
+ipfwd_t4240_48G.sh_install = $(INSTALL_BIN)
+ipfwd_t4240_48G.sh_install_flags = $(INSTALL_BIN_FLAGS)
+ipfwd_t1024_12G.sh_install = $(INSTALL_BIN)
+ipfwd_t1024_12G.sh_install_flags = $(INSTALL_BIN_FLAGS)
