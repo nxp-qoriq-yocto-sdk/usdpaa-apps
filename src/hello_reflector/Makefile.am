@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Freescale Semiconductor, Inc.
+# Copyright (c) 2011 Freescale Semiconductor, Inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,19 +29,12 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac classifier_demo cpu_hotplug dma_test fra fragmentation_demo \
-	  hello_reflector
+bin_PROGRAMS = hello_reflector
 
-ifeq (B4860,$(SOC))
-ifeq (powerpc,$(ARCH))
-SUBDIRS += dsp_dpa
-endif
-endif
-
-ifneq (,$(findstring $(SOC),B4860 T4240 T2080))
-SUBDIRS += ceetm_demo
-endif
-
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+hello_reflector_SOURCES := hello_reflector.c
+hello_reflector_LDADD := usdpaa_syscfg usdpaa_qbman usdpaa_fman \
+			  usdpaa_dma_mem usdpaa_of usdpaa_process
+hello_reflector_LDFLAGS := $(LIBXML2_LDFLAGS)
+hello_reflector_CFLAGS := \
+	-DDEF_PCD_PATH="/$(INSTALL_OTHER)/usdpaa_policy_hash_ipv4.xml" \
+	-DDEF_CFG_PATH="/$(INSTALL_OTHER)/usdpaa_config_p4_serdes_0xe.xml"
