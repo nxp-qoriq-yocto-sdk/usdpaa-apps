@@ -29,19 +29,12 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac classifier_demo cpu_hotplug dma_test fra fragmentation_demo \
-	  hello_reflector ipfwd ipsecfwd ipsec_offload lpm-ipfwd pme_loopback
+bin_PROGRAMS = pme_loopback_test
 
-ifeq (B4860,$(SOC))
-ifeq (powerpc,$(ARCH))
-SUBDIRS += dsp_dpa
-endif
-endif
+pme_loopback_test_SOURCES := pme_loopback.c
+pme_loopback_test_LDADD := usdpaa_qbman usdpaa_dma_mem usdpaa_pme usdpaa_of \
+			   usdpaa_process
 
-ifneq (,$(findstring $(SOC),B4860 T4240 T2080))
-SUBDIRS += ceetm_demo
-endif
+pme_loopback_test_LDFLAGS := $(LIBEDIT_LDFLAGS) -T $(TOP_LEVEL)/src/pme_loopback/pme_loopback.lds
 
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+pme_loopback_test_CFLAGS := $(LIBEDIT_CFLAGS)
