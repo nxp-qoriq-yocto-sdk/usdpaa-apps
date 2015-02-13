@@ -29,20 +29,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac classifier_demo cpu_hotplug dma_test fra fragmentation_demo \
-	  hello_reflector ipfwd ipsecfwd ipsec_offload lpm-ipfwd pme_loopback \
-	  qbman_speed reassembly_demo reflector rmu simple_crypto
+bin_PROGRAMS = simple_crypto
 
-ifeq (B4860,$(SOC))
-ifeq (powerpc,$(ARCH))
-SUBDIRS += dsp_dpa
-endif
-endif
+AM_CFLAGS := -I$(TOP_LEVEL)/src/simple_crypto/include -I$(TOP_LEVEL)/lib
+AM_CFLAGS += $(LIBRTA_CFLAGS)
 
-ifneq (,$(findstring $(SOC),B4860 T4240 T2080))
-SUBDIRS += ceetm_demo
-endif
-
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+simple_crypto_SOURCES := simple_crypto.c
+simple_crypto_LDADD := usdpaa_qbman usdpaa_dma_mem usdpaa_of usdpaa_process \
+		       fslcrypto usdpaa_sec
