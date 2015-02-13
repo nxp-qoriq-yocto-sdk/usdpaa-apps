@@ -12,7 +12,6 @@
 #	names of its contributors may be used to endorse or promote products
 #	derived from this software without specific prior written permission.
 #
-#
 # ALTERNATIVELY, this software may be distributed under the terms of the
 # GNU General Public License ("GPL") as published by the Free Software
 # Foundation, either version 2 of that License or (at your option) any
@@ -29,22 +28,29 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac classifier_demo cpu_hotplug dma_test fra fragmentation_demo \
-	  hello_reflector ipfwd ipsecfwd ipsec_offload lpm-ipfwd pme_loopback \
-	  qbman_speed reassembly_demo reflector rmu simple_crypto simple_proto \
-	  sra
+bin_PROGRAMS = srio_ipsec_offload
 
-ifeq (B4860,$(SOC))
-SUBDIRS += srio_ipsec_offload
-ifeq (powerpc,$(ARCH))
-SUBDIRS += dsp_dpa
-endif
-endif
+dist_DATA =  srio_ipsec_offload_config_b4860.xml srio_ipsec_offload_pcd_b4.xml \
+             srio_ipsec_offload_policy.xml srio_ipsec_offload_swp.xml
 
-ifneq (,$(findstring $(SOC),B4860 T4240 T2080))
-SUBDIRS += ceetm_demo
-endif
+AM_CFLAGS := -I$(TOP_LEVEL)/src/srio_ipsec_offload/srio/include\
+	     $(FMC_CFLAGS) $(FMLIB_CFLAGS) $(LIBRTA_CFLAGS) $(LIBXML2_CFLAGS) \
+	     $(DPAOFFLOAD_CFLAGS)
 
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+srio_ipsec_offload_SOURCES := srio_ipsec_offload.c pcd_init.c \
+			srio_ipsec_init.c xfrm_km.c \
+			pfkey_utils.c neigh_utils.c \
+			route_utils.c stats_init.c \
+			srio/rman.c srio/rman_interface.c \
+			srio/rman_fq_interface.c \
+			srio/srio.c
+
+srio_ipsec_offload_LDADD := usdpaa_ppac usdpaa_syscfg usdpaa_qbman usdpaa_fman \
+		      usdpaa_dma_mem usdpaa_of usdpaa_process \
+		      usdpaa_dpa_offload fifo_queue \
+                      usdpaa_rman usdpaa_srio usdpaa_dma usdpaa_sec
+
+srio_ipsec_offload_LDFLAGS := $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
+			$(FMC_LDFLAGS) $(FMLIB_LDFLAGS) \
+			$(DPAOFFLOAD_LDFLAGS) \
+			-T $(TOP_LEVEL)/src/ppac/ppac.lds
