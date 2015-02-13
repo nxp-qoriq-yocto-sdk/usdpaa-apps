@@ -1,5 +1,4 @@
-# Copyright (c) 2015 Freescale Semiconductor, Inc.
-# All rights reserved.
+# Copyright 2012 Freescale Semiconductor, Inc.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -29,12 +28,14 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac classifier_demo cpu_hotplug dma_test
+bin_PROGRAMS = dma_test raw_test
 
-ifneq (,$(findstring $(SOC),B4860 T4240 T2080))
-SUBDIRS += ceetm_demo
-endif
+dma_test_SOURCES := dma_test.c
+dma_test_LDADD := usdpaa_dma_mem usdpaa_process
+dma_test_CFLAGS := $(LIBEDIT_CFLAGS)
+dma_test_LDFLAGS := $(LIBEDIT_LDFLAGS)
 
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+raw_test_SOURCES := raw_test.c
+raw_test_LDADD := $(dma_test_LDADD)
+raw_test_CFLAGS := $(dma_test_CFLAGS)
+raw_test_LDFLAGS := $(dma_test_LDFLAGS)
