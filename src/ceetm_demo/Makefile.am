@@ -29,12 +29,13 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac
+bin_PROGRAMS = ceetm_demo
 
-ifneq (,$(findstring $(SOC),B4860 T4240 T2080))
-SUBDIRS += ceetm_demo
-endif
+dist_DATA = ceetm_cfg.xml
 
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+ceetm_demo_CFLAGS := $(LIBXML2_CFLAGS)
+ceetm_demo_SOURCES := ceetm_demo.c ceetm_cfg_parser.c
+ceetm_demo_LDADD := usdpaa_ppac usdpaa_syscfg usdpaa_qbman \
+		    usdpaa_fman usdpaa_dma_mem usdpaa_of usdpaa_process
+ceetm_demo_LDFLAGS := $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
+		     -T $(TOP_LEVEL)/src/ppac/ppac.lds
