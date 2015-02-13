@@ -29,19 +29,19 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac classifier_demo cpu_hotplug dma_test fra fragmentation_demo \
-	  hello_reflector ipfwd ipsecfwd
+bin_PROGRAMS = ipsecfwd_app
 
-ifeq (B4860,$(SOC))
-ifeq (powerpc,$(ARCH))
-SUBDIRS += dsp_dpa
-endif
-endif
+AM_CFLAGS := -I$(TOP_LEVEL)/src/ipsecfwd/lib
+AM_CFLAGS += -I$(TOP_LEVEL)/src/ipsecfwd/include
+AM_CFLAGS += -I$(TOP_LEVEL)/lib
+AM_CFLAGS += $(LIBRTA_CFLAGS)
 
-ifneq (,$(findstring $(SOC),B4860 T4240 T2080))
-SUBDIRS += ceetm_demo
-endif
-
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+ipsecfwd_app_SOURCES := ipsecfwd.c ipsecfwd_init.c ipsecfwd_handler.c \
+	ipsecfwd_splitkey.c
+ipsecfwd_app_LDADD := usdpaa_ppac usdpaa_qbman usdpaa_fman usdpaa_dma_mem \
+	usdpaa_of usdpaa_process usdpaa_mm app_ipsecfwd_ipsec app_ipsecfwd_net \
+	app_ipsecfwd_ethernet app_ipsecfwd_ip apps_ipsecfwd_arp \
+	app_ipsecfwd_refcount usdpaa_syscfg usdpaa_sec
+ipsecfwd_app_sys_LDADD := rt
+ipsecfwd_app_LDFLAGS := $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
+	-T $(TOP_LEVEL)/src/ppac/ppac.lds
