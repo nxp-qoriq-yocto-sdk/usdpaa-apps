@@ -29,20 +29,25 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac classifier_demo cpu_hotplug dma_test fra fragmentation_demo \
-	  hello_reflector ipfwd ipsecfwd ipsec_offload lpm-ipfwd pme_loopback \
-	  qbman_speed reassembly_demo
+bin_PROGRAMS = reassembly_demo
 
-ifeq (B4860,$(SOC))
-ifeq (powerpc,$(ARCH))
-SUBDIRS += dsp_dpa
-endif
-endif
+dist_DATA = reassembly_demo_config-p4080.xml \
+		reassembly_demo_config-b4860.xml \
+		reassembly_demo_config-b4420.xml \
+		reassembly_demo_config-p2041.xml \
+		reassembly_demo_config-t2080.xml \
+		reassembly_demo_config-t4240.xml \
+		reassembly_demo_policy.xml \
+		reassembly_demo_policy-v3.xml
 
-ifneq (,$(findstring $(SOC),B4860 T4240 T2080))
-SUBDIRS += ceetm_demo
-endif
+reassembly_demo_CFLAGS := $(FMC_CFLAGS) $(FMLIB_CFLAGS) $(DPAOFFLOAD_CFLAGS)
 
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+reassembly_demo_LDFLAGS := $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
+			   $(FMC_LDFLAGS) $(FMLIB_LDFLAGS) \
+			   $(DPAOFFLOAD_LDFLAGS) \
+			   -T $(TOP_LEVEL)/src/ppac/ppac.lds
+reassembly_demo_SOURCES := reassembly_demo.c vsp_api.c
+
+reassembly_demo_LDADD := usdpaa_dpa_offload usdpaa_ppac usdpaa_syscfg \
+		usdpaa_qbman usdpaa_fman usdpaa_dma_mem usdpaa_of \
+		usdpaa_process fifo_queue
