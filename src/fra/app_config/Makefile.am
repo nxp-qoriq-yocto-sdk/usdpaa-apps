@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Freescale Semiconductor, Inc.
+# Copyright (c) 2010-2011 Freescale Semiconductor, Inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,18 +29,18 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac classifier_demo cpu_hotplug dma_test fra
-
-ifeq (B4860,$(SOC))
-ifeq (powerpc,$(ARCH))
-SUBDIRS += dsp_dpa
-endif
-endif
-
-ifneq (,$(findstring $(SOC),B4860 T4240 T2080))
-SUBDIRS += ceetm_demo
-endif
-
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+dist_DATA = fra_config_dstr_processing1.xml \
+	    fra_config_dstr_processing2.xml \
+	    fra_config_dstr_port1_port2_loopback.xml \
+	    fra_config_dstr_testspeed_rxpoint.xml \
+	    fra_config_dstr_testspeed_txpoint.xml \
+	    fra_config_mbox_processing1.xml \
+	    fra_config_mbox_processing2.xml \
+	    rman_config.xml network_config.xml \
+	    transactions_config.xml distributions_config.xml \
+	    policies_config.xml \
+	    fra_config_dstr_processing1_port2.xml \
+	    fra_config_dstr_processing2_port2.xml \
+	    fra_config_mbox_processing1_port2.xml \
+	    fra_config_mbox_processing2_port2.xml \
+	    fra_config_port_write_test.xml

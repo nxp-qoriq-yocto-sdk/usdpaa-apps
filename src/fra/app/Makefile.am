@@ -29,18 +29,18 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac classifier_demo cpu_hotplug dma_test fra
+bin_PROGRAMS = fra
 
-ifeq (B4860,$(SOC))
-ifeq (powerpc,$(ARCH))
-SUBDIRS += dsp_dpa
-endif
-endif
+AM_CFLAGS := $(LIBEDIT_CFLAGS) -I$(TOP_LEVEL)/src/fra/include
 
-ifneq (,$(findstring $(SOC),B4860 T4240 T2080))
-SUBDIRS += ceetm_demo
-endif
+fra_SOURCES := main.c fra.c test_speed.c test_port_write.c
+fra_LDADD := fra_cfg_parser rman_interface fra_fman_port fra_fq_interface \
+	     usdpaa_syscfg usdpaa_qbman usdpaa_fman usdpaa_dma_mem \
+	     usdpaa_rman usdpaa_srio usdpaa_of usdpaa_process fra_bpool \
+	     fra_utils
 
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+fra_LDFLAGS := $(LIBEDIT_LDFLAGS) $(LIBXML2_LDFLAGS) -T $(TOP_LEVEL)/src/fra/app/fra.lds
+
+fra_CFLAGS := -DDEF_PCD_PATH="/$(INSTALL_OTHER)/usdpaa_policy_hash_ipv4.xml" \
+	      -DDEF_CFG_PATH="/$(INSTALL_OTHER)/usdpaa_config_p3_p5_serdes_0x33.xml" \
+	      -DDEF_FRA_CFG_PATH="/$(INSTALL_OTHER)/fra_config_dstr_processing1.xml"
