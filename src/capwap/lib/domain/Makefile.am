@@ -29,8 +29,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac
+lib_LIBRARIES = capwap_domain
 
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+capwap_domain_CFLAGS := -I$(TOP_LEVEL)/src/capwap/include \
+		$(FMLIB_CFLAGS)
+
+capwap_domain_SOURCES = capwap_usecase.c

@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Freescale Semiconductor, Inc.
+# Copyright (c) 2014 Freescale Semiconductor, Inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,8 +29,14 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac
+bin_PROGRAMS = fslbrctl fsltunnel
 
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+fslbrctl_SOURCES := fslbr.c fslbrctl.c
+
+fsltunnel_CFLAGS := $(LIBEDIT_CFLAGS)
+fsltunnel_LDFLAGS := $(LIBEDIT_LDFLAGS)
+fsltunnel_SOURCES := fsltunnel.c
+
+lib_LIBRARIES = capwap_fslbr
+
+capwap_fslbr_SOURCES := fslbr.c fslbr_lib.c

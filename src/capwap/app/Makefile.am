@@ -29,8 +29,18 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac
+bin_PROGRAMS = capwap
 
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+capwap_CFLAGS := $(LIBEDIT_CFLAGS) -I$(TOP_LEVEL)/src/capwap/include \
+		$(FMLIB_CFLAGS)
+
+capwap_SOURCES := main.c
+
+capwap_LDFLAGS := $(LIBEDIT_LDFLAGS) $(LIBXML2_LDFLAGS) \
+		 -T $(TOP_LEVEL)/src/capwap/app/capwap.lds
+
+capwap_LDADD := usdpaa_syscfg usdpaa_qbman usdpaa_fman usdpaa_dma_mem capwap_fslbr\
+		usdpaa_of usdpaa_process  \
+		capwap_fq_interface capwap_xml_parser capwap_domain
+
+capwap_sys_LDADD := fm

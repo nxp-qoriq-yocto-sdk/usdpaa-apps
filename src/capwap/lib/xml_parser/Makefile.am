@@ -29,8 +29,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac
+lib_LIBRARIES = capwap_xml_parser
 
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+capwap_xml_parser_CFLAGS := -I$(TOP_LEVEL)/src/capwap/include \
+		$(LIBXML2_CFLAGS) $(FMLIB_CFLAGS)
+
+capwap_xml_parser_SOURCES = tunnel_cfg_parser.c

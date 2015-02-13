@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Freescale Semiconductor, Inc.
+# Copyright (c) 2014 Freescale Semiconductor, Inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,8 +29,4 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac
-
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+SUBDIRS = lib app app_config fun-demo
