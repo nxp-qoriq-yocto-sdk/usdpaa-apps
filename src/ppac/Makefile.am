@@ -29,4 +29,36 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = lib src
+lib_LIBRARIES = usdpaa_ppac
+dist_DATA =						\
+	usdpaa_config_p2_p3_p5_14g.xml			\
+	usdpaa_config_p2_p3_p5_14g_shared_mac.xml	\
+	usdpaa_config_p3_p5_serdes_0x04.xml		\
+	usdpaa_config_p3_p5_serdes_0x33.xml		\
+	usdpaa_config_p4_serdes_0xe_offline_host.xml	\
+	usdpaa_config_p4_serdes_0x10.xml		\
+	usdpaa_config_p4_serdes_0xe.xml			\
+	usdpaa_config_p4_serdes_0x16.xml		\
+	usdpaa_config_p5_serdes_0x02.xml		\
+	usdpaa_config_b4_serdes_0x2a_0x98.xml		\
+	usdpaa_config_b4_serdes_0x18_0x9e.xml		\
+	usdpaa_config_t4_serdes_1_1_5_5.xml		\
+	usdpaa_config_t4_48g.xml			\
+	usdpaa_config_t2_serdes_66_15.xml		\
+	usdpaa_config_t2_serdes_66_15_22g.xml		\
+	usdpaa_config_t1_serdes_0x66.xml		\
+	usdpaa_config_t1024_serdes_0x99.xml		\
+	usdpaa_policy_hash_ipv4.xml			\
+	usdpaa_policy_hash_ipv4_arp_coarse_classify.xml \
+	usdpaa_policy_hash_shared_mac_ipv4.xml		\
+	usdpaa_custom_coarse_classify_netpdl.xml	\
+	usdpaa_policer.xml
+
+AM_CFLAGS := -I$(TOP_LEVEL)/lib
+AM_CFLAGS += $(LIBRTA_CFLAGS)
+
+usdpaa_ppac_SOURCES = main.c
+usdpaa_ppac_CFLAGS :=								\
+	$(LIBEDIT_CFLAGS)							\
+	-DDEF_PCD_PATH="/$(INSTALL_OTHER)/usdpaa_policy_hash_ipv4.xml"		\
+	-DDEF_CFG_PATH="/$(INSTALL_OTHER)/usdpaa_config_p4_serdes_0xe.xml"
