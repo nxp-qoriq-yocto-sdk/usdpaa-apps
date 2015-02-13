@@ -29,12 +29,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac classifier_demo cpu_hotplug
+bin_PROGRAMS = daemon
 
-ifneq (,$(findstring $(SOC),B4860 T4240 T2080))
-SUBDIRS += ceetm_demo
-endif
-
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+daemon_SOURCES := usdpaa_hotplugd.c
+daemon_LDADD := usdpaa_ppac usdpaa_syscfg usdpaa_qbman usdpaa_fman \
+		   usdpaa_dma_mem usdpaa_of usdpaa_process
+daemon_LDFLAGS := $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
+		     -T $(TOP_LEVEL)/src/ppac/ppac.lds
