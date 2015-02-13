@@ -30,7 +30,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 SUBDIRS = ppac classifier_demo cpu_hotplug dma_test fra fragmentation_demo \
-	  hello_reflector ipfwd ipsecfwd
+	  hello_reflector ipfwd ipsecfwd ipsec_offload
 
 ifeq (B4860,$(SOC))
 ifeq (powerpc,$(ARCH))
