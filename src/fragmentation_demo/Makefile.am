@@ -29,18 +29,25 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac classifier_demo cpu_hotplug dma_test fra fragmentation_demo
+bin_PROGRAMS = fragmentation_demo
 
-ifeq (B4860,$(SOC))
-ifeq (powerpc,$(ARCH))
-SUBDIRS += dsp_dpa
-endif
-endif
+dist_DATA =  fragmentation_demo_config-p4080.xml \
+		fragmentation_demo_config-b4860.xml \
+		fragmentation_demo_config-b4420.xml \
+		fragmentation_demo_config-p2041.xml \
+		fragmentation_demo_config-t2080.xml \
+		fragmentation_demo_config-t4240.xml \
+		fragmentation_demo_policy.xml
 
-ifneq (,$(findstring $(SOC),B4860 T4240 T2080))
-SUBDIRS += ceetm_demo
-endif
+fragmentation_demo_CFLAGS := $(FMC_CFLAGS) $(FMLIB_CFLAGS) $(DPAOFFLOAD_CFLAGS)
 
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+fragmentation_demo_SOURCES := fragmentation_demo.c
+
+fragmentation_demo_LDFLAGS := $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
+			      $(FMC_LDFLAGS) $(FMLIB_LDFLAGS) \
+			      $(DPAOFFLOAD_LDFLAGS) \
+			      -T $(TOP_LEVEL)/src/ppac/ppac.lds
+
+fragmentation_demo_LDADD := usdpaa_ppac usdpaa_syscfg usdpaa_qbman usdpaa_fman \
+			    usdpaa_dma_mem usdpaa_of usdpaa_process \
+			    usdpaa_dpa_offload fifo_queue
