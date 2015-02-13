@@ -29,12 +29,26 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac classifier_demo
+bin_PROGRAMS = classifier_demo
 
-ifneq (,$(findstring $(SOC),B4860 T4240 T2080))
-SUBDIRS += ceetm_demo
-endif
+dist_DATA = classifier_demo_config-p4080.xml \
+	    classifier_demo_config-b4860.xml \
+	    classifier_demo_config-b4420.xml \
+	    classifier_demo_config-p2041.xml \
+	    classifier_demo_config-t2080.xml \
+	    classifier_demo_config-t4240.xml \
+	    classifier_demo_policy.xml
 
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+classifier_demo_CFLAGS := -I$(TOP_LEVEL)/lib/hash_table \
+			  $(FMC_CFLAGS) $(FMLIB_CFLAGS) $(DPAOFFLOAD_CFLAGS)
+
+classifier_demo_SOURCES := ceetm_api.c dpa_classif_demo.c
+
+classifier_demo_LDFLAGS := $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
+			   $(FMC_LDFLAGS) $(FMLIB_LDFLAGS) \
+			   $(DPAOFFLOAD_LDFLAGS) \
+			   -T $(TOP_LEVEL)/src/ppac/ppac.lds
+
+classifier_demo_LDADD := usdpaa_dpa_offload usdpaa_qbman usdpaa_of usdpaa_dma_mem \
+			 usdpaa_ppac usdpaa_fman usdpaa_syscfg usdpaa_process \
+			 fifo_queue hash_table
