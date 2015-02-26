@@ -113,20 +113,18 @@
 */
 #define IPSEC_OUT_PRE_ENC_TBL_KEY_SIZE \
 	{ \
-	0,     \
-	0,     \
-	0,     \
-	0,     \
-	(2 * DPA_OFFLD_IPv4_ADDR_LEN_BYTES +	 \
-	IP_PROTO_FIELD_LEN), \
-	(2 * DPA_OFFLD_IPv6_ADDR_LEN_BYTES +	 \
-	IP_PROTO_FIELD_LEN), \
+	0, \
+	0, \
+	0, \
+	0, \
 	(2 * DPA_OFFLD_IPv4_ADDR_LEN_BYTES + \
 	IP_PROTO_FIELD_LEN + \
 	2 * PORT_FIELD_LEN), \
 	(2 * DPA_OFFLD_IPv6_ADDR_LEN_BYTES + \
 	IP_PROTO_FIELD_LEN + \
 	2 * PORT_FIELD_LEN), \
+	0, \
+	0, \
 	(2 * DPA_OFFLD_IPv4_ADDR_LEN_BYTES + \
 	IP_PROTO_FIELD_LEN + \
 	2 * PORT_FIELD_LEN), \
@@ -136,17 +134,12 @@
 	}
 
 /* Packet fields for outbound pre-sec traffic selector */
-#define IPSEC_OUT_POL_TCPUDP_KEY_FIELDS \
+#define IPSEC_OUT_POL_KEY_FIELDS \
 	(DPA_IPSEC_KEY_FIELD_SIP | \
 	DPA_IPSEC_KEY_FIELD_DIP | \
 	DPA_IPSEC_KEY_FIELD_PROTO | \
 	DPA_IPSEC_KEY_FIELD_SPORT | \
 	DPA_IPSEC_KEY_FIELD_DPORT)
-
-#define IPSEC_OUT_POL_ICMP_KEY_FIELDS \
-	(DPA_IPSEC_KEY_FIELD_SIP | \
-	DPA_IPSEC_KEY_FIELD_DIP | \
-	DPA_IPSEC_KEY_FIELD_PROTO)
 
 static inline int get_out_pol_num(int dpa_ipsec_proto)
 {

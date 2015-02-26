@@ -128,9 +128,9 @@
 	</classification>
         <classification name="icmp_cc" max="16" masks="yes" statistics="frame">
                 <key>
-                         <nonheader source="key" action="exact_match" offset="0" size="9"/>
+                         <nonheader source="key" action="exact_match" offset="0" size="13"/>
                 </key>
-		<action condition="on-miss" statistics="enable"/>
+		<action condition="on-miss" type="classification" name="tcpudp_cc" statistics="enable"/>
         </classification>
 	<classification name="tcpudp6_cc" max="64" masks="yes" statistics="frame">
 		<key>
@@ -140,13 +140,13 @@
 	</classification>
         <classification name="icmp6_cc" max="16" masks="yes" statistics="frame">
                 <key>
-                        <nonheader source="key" action="exact_match" offset="0" size="33"/>
+                        <nonheader source="key" action="exact_match" offset="0" size="37"/>
                 </key>
-		<action condition="on-miss" statistics="enable"/>
+		<action condition="on-miss" type="classification" name="tcpudp6_cc" statistics="enable"/>
         </classification>
 	<distribution name="ob_pre_tcp_dist">
 		<protocols>
-			<protcolref name="ipv4"/>
+			<protocolref name="ipv4"/>
 			<protocolref name="tcp"/>
 		</protocols>
 		<queue count="1" base="0x3e82"/>
@@ -161,7 +161,7 @@
 	</distribution>
 	<distribution name="ob_pre_tcp6_dist">
 		<protocols>
-			<protcolref name="ipv6"/>
+			<protocolref name="ipv6"/>
 			<protocolref name="tcp"/>
 		</protocols>
 		<queue count="1" base="0x3e82"/>
@@ -176,7 +176,7 @@
 	</distribution>
 	<distribution name="ob_pre_udp_dist">
 		<protocols>
-			<protcolref name="ipv4"/>
+			<protocolref name="ipv4"/>
 			<protocolref name="udp"/>
 		</protocols>
 		<queue count="1" base="0x3e82"/>
@@ -191,7 +191,7 @@
 	</distribution>
 	<distribution name="ob_pre_udp6_dist">
 		<protocols>
-			<protcolref name="ipv6"/>
+			<protocolref name="ipv6"/>
 			<protocolref name="udp"/>
 		</protocols>
 		<queue count="1" base="0x3e82"/>
@@ -207,6 +207,8 @@
         <distribution name="ob_pre_ip4_icmp">
                 <protocols>
                         <protocolref name="ipv4"/>
+			<!-- fmc fails to support protocolref="icmp" at this time -->
+			<!-- <protocolref name="icmp"/> -->
                 </protocols>
                 <queue count="1" base="0x3e82"/>
                 <key>
@@ -219,6 +221,8 @@
         <distribution name="ob_pre_ip6_icmp">
                 <protocols>
                         <protocolref name="ipv6"/>
+			<!-- fmc fails to support protocolref="icmp" at this time -->
+			<!-- <protocolref name="icmp"/> -->
                 </protocols>
                 <queue count="1" base="0x3e82"/>
                 <key>
@@ -228,6 +232,28 @@
                 </key>
                 <action type="classification" name="icmp6_cc"/>
         </distribution>
+	<distribution name="ob_pre_any_dist">
+		<protocols>
+			<protocolref name="ipv4"/>
+		</protocols>
+		<queue count="1" base="0x3e82"/>
+		<key>
+			<fieldref name="ipv4.src"/>
+			<fieldref name="ipv4.dst"/>
+		</key>
+		<action type="classification" name="tcpudp_cc"/>
+	</distribution>
+	<distribution name="ob_pre_any6_dist">
+		<protocols>
+			<protocolref name="ipv6"/>
+		</protocols>
+		<queue count="1" base="0x3e82"/>
+		<key>
+			<fieldref name="ipv6.src"/>
+			<fieldref name="ipv6.dst"/>
+		</key>
+		<action type="classification" name="tcpudp6_cc"/>
+	</distribution>
 	<distribution name="ob_pre_default_dist">
 		<queue count="1" base="0x3e82"/>
 	</distribution>
@@ -239,6 +265,8 @@
 			<distributionref name="ob_pre_udp6_dist"/>
 			<distributionref name="ob_pre_ip4_icmp"/>
 			<distributionref name="ob_pre_ip6_icmp"/>
+			<distributionref name="ob_pre_any_dist"/>
+			<distributionref name="ob_pre_any6_dist"/>
 			<distributionref name="ob_pre_default_dist"/>
 		</dist_order>
 	</policy>
