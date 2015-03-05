@@ -49,6 +49,5 @@ classifier_demo_LDFLAGS := $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
 			   $(DPAOFFLOAD_LDFLAGS) \
 			   -T $(TOP_LEVEL)/src/ppac/ppac.lds
 
-classifier_demo_LDADD := usdpaa_dpa_offload usdpaa_qbman usdpaa_of usdpaa_dma_mem \
-			 usdpaa_ppac usdpaa_fman usdpaa_syscfg usdpaa_process \
-			 fifo_queue hash_table
+classifier_demo_LDADD := usdpaa_qbman usdpaa_of usdpaa_dma_mem usdpaa_ppac \
+			usdpaa_fman usdpaa_syscfg usdpaa_process hash_table
