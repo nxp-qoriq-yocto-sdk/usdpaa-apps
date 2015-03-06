@@ -744,7 +744,7 @@ static int process_del_route(struct nlmsghdr *nh, int vif_idx, int vof_idx)
 	if (oif == vof_idx) {
 		ret = lookup_ob_neigh_entry(af, (u8 *)dst, rtm_dst_len);
 		if (!ret)
-			ret = remove_ib_neigh_entry(af, (u8 *)dst, rtm_dst_len);
+			ret = remove_ob_neigh_entry(af, (u8 *)dst, rtm_dst_len);
 	}
 	if (oif == vif_idx) {
 		ret = lookup_ib_neigh_entry(af, (u8 *)dst, rtm_dst_len);
