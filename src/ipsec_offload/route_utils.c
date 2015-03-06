@@ -41,13 +41,16 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
+#include "app_common.h"
+#include "neigh_sizing.h"
+
 #define BUFSIZE 8192
 
 struct route_info {
-	struct in_addr dst_addr;
-	struct in_addr src_addr;
-	struct in_addr gw_addr;
-	unsigned char dst_len;
+	u8 family;
+	u8 dst_addr[IPv6_KEY_SIZE];
+	u8 gw_addr[IPv6_KEY_SIZE];
+	u8 dst_prefix_len;
 	char if_name[IF_NAMESIZE];
 };
 
@@ -91,13 +94,29 @@ static void parse_routes(struct nlmsghdr *nl_hdr, struct route_info *rt_info)
 {
 	struct rtmsg *rt_msg;
 	struct rtattr *rt_attr;
-	int rt_len;
+	int rt_len, addr_len;
 
 	rt_msg = (struct rtmsg *)NLMSG_DATA(nl_hdr);
 
-	if ((rt_msg->rtm_family != AF_INET) ||
-	    (rt_msg->rtm_table != RT_TABLE_MAIN))
+	if ((rt_msg->rtm_family != AF_INET) && (rt_msg->rtm_family != AF_INET6))
 		return;
+
+	if (rt_msg->rtm_table != RT_TABLE_MAIN)
+		return;
+
+	rt_info->dst_prefix_len	= rt_msg->rtm_dst_len;
+	rt_info->family		= rt_msg->rtm_family;
+
+	switch (rt_msg->rtm_family) {
+	case AF_INET:
+		addr_len = IPv4_KEY_SIZE;
+		break;
+	case AF_INET6:
+		addr_len = IPv6_KEY_SIZE;
+		break;
+	default:
+		return;
+	}
 
 	rt_attr = (struct rtattr *)RTM_RTA(rt_msg);
 	rt_len = RTM_PAYLOAD(nl_hdr);
@@ -109,33 +128,37 @@ static void parse_routes(struct nlmsghdr *nl_hdr, struct route_info *rt_info)
 			break;
 
 		case RTA_GATEWAY:
-			memcpy(&rt_info->gw_addr, RTA_DATA(rt_attr),
-			       sizeof(rt_info->gw_addr));
-			break;
-
-		case RTA_PREFSRC:
-			memcpy(&rt_info->src_addr, RTA_DATA(rt_attr),
-			       sizeof(rt_info->src_addr));
+			memcpy(&rt_info->gw_addr, RTA_DATA(rt_attr), addr_len);
 			break;
 
 		case RTA_DST:
-			memcpy(&rt_info->dst_addr, RTA_DATA(rt_attr),
-			       sizeof(rt_info->dst_addr));
+			memcpy(&rt_info->dst_addr, RTA_DATA(rt_attr), addr_len);
 			break;
 		}
 	}
-	rt_info->dst_len = rt_msg->rtm_dst_len;
 }
 
-int get_dst_addrs(struct in_addr *dst_addr, unsigned char *dst_len,
-		  struct in_addr *gw_addr, unsigned int max_len)
+int get_dst_addrs(const u8 *gw_addr, unsigned char family, u8 *dst_addr_array,
+	unsigned char *dst_prefix_array, unsigned int max_items)
 {
 	int ret, i = 0;
 	struct nlmsghdr *nl_msg;
 	struct route_info rt_info;
 	char msg_buf[BUFSIZE];
-
+	unsigned char gw_addr_len;
 	int sock, len, msg_seq = 0;
+
+	switch (family) {
+	case AF_INET:
+		gw_addr_len = IPv4_KEY_SIZE;
+		break;
+	case AF_INET6:
+		gw_addr_len = IPv6_KEY_SIZE;
+		break;
+	default:
+		return 0;
+	}
+
 	sock = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
 	if (sock < 0) {
 		fprintf(stderr, "cannot open route NL socket\n");
@@ -167,10 +190,12 @@ int get_dst_addrs(struct in_addr *dst_addr, unsigned char *dst_len,
 		memset(&rt_info, 0, sizeof(struct route_info));
 		parse_routes(nl_msg, &rt_info);
 
-		if (!memcmp(&rt_info.gw_addr, gw_addr, sizeof(*gw_addr))) {
-			dst_addr[i] = rt_info.dst_addr;
-			dst_len[i] = rt_info.dst_len;
-			if (i == max_len)
+		if ((rt_info.family == family) &&
+			(!memcmp(&rt_info.gw_addr, gw_addr, gw_addr_len))) {
+			memcpy(&dst_addr_array[i * MAX_IP_KEY_SIZE],
+				rt_info.dst_addr, gw_addr_len);
+			dst_prefix_array[i] = rt_info.dst_prefix_len;
+			if (i == max_items)
 				break;
 			i++;
 		}

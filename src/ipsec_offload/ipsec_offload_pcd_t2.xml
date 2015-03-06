@@ -82,7 +82,7 @@
 		     with corresponding Linux interface Rx fqids -->
 		<queue base="0xcdab"/>
 	</classification>
-	<classification name="ob_post_ip6_cc" max="64" masks="no">
+	<classification name="ob_post_ip6_cc" max="64" masks="yes">
 		<key>
 			<nonheader source="key" action="exact_match" offset="0" size="16"/>
 		</key>
@@ -319,7 +319,7 @@
 		<action condition="on-miss" type="classification" name="ib_post_ip6_cc"/>
 	</classification>
 	
-	<classification name="ib_post_ip6_cc" max="64" masks="no">
+	<classification name="ib_post_ip6_cc" max="64" masks="yes">
 		<key>
 			<fieldref name="ipv6.dst"/>
 		</key>

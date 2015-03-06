@@ -32,10 +32,16 @@
 #ifndef __APP_COMMON_H
 #define __APP_COMMON_H
 
-#include <ppac.h>
+#include "ppam_if.h"
+#include <ppac_interface.h>
 #include <flib/rta.h>
 #include "std_ext.h"
 #include "fmc.h"
+#include "fsl_dpa_ipsec.h"
+
+#define IPv4_KEY_SIZE		4
+#define IPv6_KEY_SIZE		16
+#define MAX_IP_KEY_SIZE		16
 
 static inline struct fman_if *get_offline_fif(int fm,
 					      int port_idx)
@@ -209,8 +215,8 @@ int ipsec_offload_cleanup(int dpa_ipsec_id);
 int setup_xfrm_msgloop(int dpa_ipsec_id, pthread_t *tid);
 int setup_neigh_loop(pthread_t *tid);
 int create_nl_socket(int protocol, int groups);
-int get_dst_addrs(struct in_addr *dst_addr, unsigned char *dst_len,
-		  struct in_addr *gw_addr, unsigned int max_len);
+int get_dst_addrs(const u8 *gw_addr, unsigned char family, u8 *dst_addr_array,
+	unsigned char *dst_prefix_array, unsigned int max_items);
 int set_dist_base_fqid(struct fmc_model_t *cmodel, char *fmc_path,
 		       uint32_t fqid);
 int set_cc_miss_fqid(struct fmc_model_t *cmodel, char *fmc_path,

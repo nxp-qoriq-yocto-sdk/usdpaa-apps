@@ -32,50 +32,35 @@
 
 #ifndef __NEIGH_SIZING_H
 #define __NEIGH_SIZING_H
-/* key number and size for neigh tables */
-#define IPv4_KEY_SIZE		4
-#define IPv6_KEY_SIZE		16
-#define MAX_IP_KEY_SIZE		16
+
 #if defined P4080
-#define IPv4_NUM_KEYS		16
-#define IPv6_NUM_KEYS		16
-#define IPv4_NUM_ADDRS		16
-#define IPv6_NUM_ADDRS		16
+#define NEIGH_MAX		16
+#define LOCAL_IP_ADDRS_MAX	16
 
 #elif defined B4860
-#define IPv4_NUM_KEYS		64
-#define IPv6_NUM_KEYS		64
-#define IPv4_NUM_ADDRS		16
-#define IPv6_NUM_ADDRS		16
+#define NEIGH_MAX		64
+#define LOCAL_IP_ADDRS_MAX	16
 
 #elif defined B4420
-#define IPv4_NUM_KEYS		64
-#define IPv6_NUM_KEYS		64
-#define IPv4_NUM_ADDRS		16
-#define IPv6_NUM_ADDRS		16
+#define NEIGH_MAX		64
+#define LOCAL_IP_ADDRS_MAX	16
 
 #elif defined T4240
-#define IPv4_NUM_KEYS		64
-#define IPv6_NUM_KEYS		64
-#define IPv4_NUM_ADDRS		16
-#define IPv6_NUM_ADDRS		16
+#define NEIGH_MAX		64
+#define LOCAL_IP_ADDRS_MAX	16
 
 #elif defined T2080
-#define IPv4_NUM_KEYS		64
-#define IPv6_NUM_KEYS		64
-#define IPv4_NUM_ADDRS		16
-#define IPv6_NUM_ADDRS		16
+#define NEIGH_MAX		64
+#define LOCAL_IP_ADDRS_MAX	16
 
 #else
-#define IPv4_NUM_KEYS		16
-#define IPv6_NUM_KEYS		16
-#define IPv4_NUM_ADDRS		16
-#define IPv6_NUM_ADDRS		16
+#define NEIGH_MAX		16
+#define LOCAL_IP_ADDRS_MAX	16
 #endif
 #define NEIGH_TABLES_KEY_SIZE { IPv4_KEY_SIZE, IPv6_KEY_SIZE }
-#define NEIGH_TABLES_NUM_KEYS { IPv4_NUM_KEYS, IPv6_NUM_KEYS }
+#define NEIGH_TABLES_NUM_KEYS { NEIGH_MAX, NEIGH_MAX }
 #define LOCAL_TABLES_KEY_SIZE { IPv4_KEY_SIZE, IPv6_KEY_SIZE }
-#define LOCAL_TABLES_NUM_KEYS { IPv4_NUM_ADDRS, IPv6_NUM_ADDRS }
+#define LOCAL_TABLES_NUM_KEYS { LOCAL_IP_ADDRS_MAX, LOCAL_IP_ADDRS_MAX }
 #define VIPSEC_TABLES_KEY_SIZE { IPv4_KEY_SIZE, IPv6_KEY_SIZE }
 #define VIPSEC_TABLES_NUM_KEYS { 1, 1 }
 #endif /*__NEIGH_SIZING_H*/

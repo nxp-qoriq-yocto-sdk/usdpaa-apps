@@ -348,7 +348,8 @@ static inline int offload_policy(struct dpa_ipsec_policy_params *pol_params,
 		pol_params->l4.src_port_mask = sel->sport_mask;
 		pol_params->l4.dest_port = sel->dport;
 		pol_params->l4.dest_port_mask = sel->dport_mask;
-	} else if (pol_params->protocol == IPPROTO_ICMP) {
+	} else if ((pol_params->protocol == IPPROTO_ICMP) ||
+		(pol_params->protocol == IPPROTO_ICMPV6)) {
 		/* we do not handle icmp code/type */
 		memset(&pol_params->icmp, 0, sizeof(pol_params->icmp));
 	}

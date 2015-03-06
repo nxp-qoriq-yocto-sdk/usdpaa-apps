@@ -580,8 +580,8 @@ static int process_del_neigh(struct nlmsghdr *nh, int rtm_sd, int vipsec_idx,
 {
 	struct ndmsg *ndm;
 	struct nlattr *na;
-	struct in_addr dst[IPv4_NUM_KEYS];
-	unsigned char dst_len[IPv4_NUM_KEYS];
+	u8 dst[NEIGH_MAX][MAX_IP_KEY_SIZE];
+	unsigned char dst_prefix[NEIGH_MAX];
 	int ret, i, num_keys;
 	u8 *key;
 
@@ -602,13 +602,11 @@ static int process_del_neigh(struct nlmsghdr *nh, int rtm_sd, int vipsec_idx,
 		      ndm->ndm_ifindex, ndm->ndm_state);
 
 		ret = remove_ob_neigh_entry(ndm->ndm_family, key, 0);
-		num_keys = get_dst_addrs(dst, dst_len,
-				   (struct in_addr *)key,
-				   IPv4_NUM_KEYS);
+		num_keys = get_dst_addrs(key, ndm->ndm_family, (u8*)dst,
+				dst_prefix, NEIGH_MAX);
 		for (i = 0; i < num_keys; i++)
 			ret = remove_ob_neigh_entry(ndm->ndm_family,
-						    (u8 *)&dst[i].s_addr,
-						    dst_len[i]);
+						    dst[i], dst_prefix[i]);
 	}
 	if (ndm->ndm_ifindex == vif_idx &&
 	    ndm->ndm_state & (NUD_STALE|NUD_FAILED)) {
@@ -616,13 +614,11 @@ static int process_del_neigh(struct nlmsghdr *nh, int rtm_sd, int vipsec_idx,
 		      ndm->ndm_ifindex, ndm->ndm_state);
 
 		ret = remove_ib_neigh_entry(ndm->ndm_family, key, 0);
-		num_keys = get_dst_addrs(dst, dst_len,
-			(struct in_addr *)key,
-			IPv4_NUM_KEYS);
+		num_keys = get_dst_addrs(key, ndm->ndm_family, (u8*)dst,
+				dst_prefix, NEIGH_MAX);
 		for (i = 0; i < num_keys; i++)
 			ret = remove_ib_neigh_entry(ndm->ndm_family,
-						    (u8 *)&dst[i].s_addr,
-						    dst_len[i]);
+						    dst[i], dst_prefix[i]);
 		 /* reuse message to remove PERMANENT entry on vipsec */
 		nh->nlmsg_seq = 0;
 		nh->nlmsg_pid = getpid();
@@ -642,8 +638,8 @@ static int process_new_neigh(struct nlmsghdr *nh, int rtm_sd, int vipsec_idx,
 	struct ndmsg *ndm;
 	struct nlattr *na;
 	struct ether_addr *lladdr;
-	struct in_addr dst[IPv4_NUM_KEYS];
-	unsigned char dst_len[IPv4_NUM_KEYS];
+	u8 dst[NEIGH_MAX][MAX_IP_KEY_SIZE];
+	unsigned char dst_prefix[NEIGH_MAX];
 	int ret, i, num_keys;
 	u8 *key;
 
@@ -668,12 +664,11 @@ static int process_new_neigh(struct nlmsghdr *nh, int rtm_sd, int vipsec_idx,
 		      ndm->ndm_ifindex, ndm->ndm_state);
 		ret = create_ib_neigh_entry(lladdr, ndm->ndm_family, key, 0);
 
-		num_keys = get_dst_addrs(dst, dst_len,
-				    (struct in_addr *)key,
-				    IPv4_NUM_KEYS);
+		num_keys = get_dst_addrs(key, ndm->ndm_family, (u8*)dst,
+				dst_prefix, NEIGH_MAX);
 		for (i = 0; i < num_keys; i++)
 			ret = create_ib_neigh_entry(lladdr, ndm->ndm_family,
-					    (u8 *)&dst[i].s_addr, dst_len[i]);
+					dst[i], dst_prefix[i]);
 	}
 	if (ndm->ndm_ifindex == vof_idx &&
 	    (ndm->ndm_state & (NUD_PERMANENT|NUD_REACHABLE))) {
@@ -681,12 +676,11 @@ static int process_new_neigh(struct nlmsghdr *nh, int rtm_sd, int vipsec_idx,
 		      ndm->ndm_ifindex, ndm->ndm_state);
 		ret = create_ob_neigh_entry(lladdr, ndm->ndm_family, key, 0);
 
-		num_keys = get_dst_addrs(dst, dst_len,
-				   (struct in_addr *)key,
-				   IPv4_NUM_KEYS);
+		num_keys = get_dst_addrs(key, ndm->ndm_family, (u8*)dst,
+				dst_prefix, NEIGH_MAX);
 		for (i = 0; i < num_keys; i++)
 			ret = create_ob_neigh_entry(lladdr, ndm->ndm_family,
-					    (u8 *)&dst[i].s_addr, dst_len[i]);
+					dst[i], dst_prefix[i]);
 	}
 	/* reuse message to set a PERMANENT entry on vipsec */
 	if (ndm->ndm_ifindex == vif_idx &&
