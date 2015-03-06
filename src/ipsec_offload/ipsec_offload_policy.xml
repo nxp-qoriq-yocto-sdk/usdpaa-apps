@@ -109,7 +109,6 @@
 	<policy name="ob_oh_post_policy">
 		<dist_order>
 			<distributionref name="ob_oh_post_default_dist"/>
-			<distributionref name="ob_oh_post_default_dist"/>
 		</dist_order>
 	</policy>
 
