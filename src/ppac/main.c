@@ -1497,29 +1497,28 @@ static int ppac_cli_promisc(int argc, char *argv[])
 		return -EINVAL;
 
 	/* Parse FMan number */
-	if (!strncmp(argv[2], "f:", 2)) {
-		fman_idx = argv[2][2] - '0';
-	} else
+	if (!strncmp(argv[2], "f:", 2))
+		fman_idx = atoi(&argv[2][2]);
+	else
 		return -EINVAL;
 
 	/* Parse port number */
-	if (!strncmp(argv[3], "m:", 2)) {
-
-	if (argv[3][3] >= '0' && argv[3][3] <= '9')
-		mac_idx = (argv[3][2] - '0')*10 + (argv[3][3] - '0');
+	if (!strncmp(argv[3], "m:", 2))
+		mac_idx = atoi(&argv[3][2]);
 	else
-		mac_idx = argv[3][2] - '0';
-	} else
 		return -EINVAL;
 
 	list_for_each(i, &ifs) {
 		pcfg = ppac_interface_pcfg((struct ppac_interface *)i);
 		fif = pcfg->fman_if;
 		if ((fif->fman_idx == fman_idx) && (fif->mac_idx == mac_idx)) {
-			if (enable)
+			if (enable) {
 				fm_mac_set_promiscuous(fif);
-			else
+				printf("Mac%d@fman%d now set to PROMISC mode.\n", mac_idx, fman_idx);
+			} else {
 				fman_if_promiscuous_disable(fif);
+				printf("Mac%d@fman%d now set to NON-PROMISC mode.\n", mac_idx, fman_idx);
+			}
 			ret = 0;
 			break;
 		}
