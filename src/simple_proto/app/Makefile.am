@@ -34,7 +34,7 @@ AM_CFLAGS := -I$(TOP_LEVEL)/src/simple_proto/include -I$(TOP_LEVEL)/lib
 AM_CFLAGS += $(LIBRTA_CFLAGS) -DRTA_DEBUG
 
 simple_proto_SOURCES := simple_proto.c macsec.c wimax.c pdcp.c srtp.c wifi.c \
-			rsa.c tls.c ipsec.c mbms.c
+			rsa.c tls.c ipsec.c mbms.c aead.c
 
 simple_proto_LDADD := fslcrypto
 

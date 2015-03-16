@@ -1,0 +1,253 @@
+/* Copyright 2015 Freescale Semiconductor, Inc.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *	 notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *	 notice, this list of conditions and the following disclaimer in the
+ *	 documentation and/or other materials provided with the distribution.
+ *     * Neither the name of Freescale Semiconductor nor the
+ *	 names of its contributors may be used to endorse or promote products
+ *	 derived from this software without specific prior written permission.
+ *
+ *
+ * ALTERNATIVELY, this software may be distributed under the terms of the
+ * GNU General Public License ("GPL") as published by the Free Software
+ * Foundation, either version 2 of that License or (at your option) any
+ * later version.
+ *
+ * THIS SOFTWARE IS PROVIDED BY Freescale Semiconductor ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL Freescale Semiconductor BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#ifndef AEAD_TEST_VECTOR_H_
+#define AEAD_TEST_VECTOR_H_
+
+struct aead_ref_vector_s {
+	union {
+		uintptr_t key;			/**< Used when the key contents
+						     are supposed to be copied
+						     by RTA as immediate in the
+						     created descriptor. */
+		dma_addr_t dma_addr_key;	/**< Used when a pointer to
+						     the key is supposed to be
+						     used as-is by RTA in the
+						     created descriptor. */
+	};
+	unsigned char cipher_alg;
+	unsigned short cipher_keylen;
+	unsigned char auth_alg;
+	union {
+		uintptr_t auth_key;		/**< Used when the key contents
+						     are supposed to be copied
+						     by RTA as immediate in the
+						     created descriptor. */
+		dma_addr_t dma_addr_auth_key;	/**< Used when a pointer to
+						     the key is supposed to be
+						     used as-is by RTA in the
+						     created descriptor. */
+	};
+	unsigned short auth_keylen;
+	uint32_t length;
+	uint8_t *plaintext;
+	uint8_t *ciphertext;
+	/*
+	 * NOTE: Keep members above unchanged!
+	 */
+	uint16_t auth_only_len;
+	uint16_t initial_auth_only_len;
+	uint8_t ivlen;
+	uint8_t *iv;
+	dma_addr_t iv_phys;
+	uint8_t *seq_spi;
+	dma_addr_t seq_spi_phys;
+	uint8_t icv_size;
+	uint32_t fd_cmd;
+};
+
+static uint8_t aead_test_num_tests[] = {
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	2
+};
+
+static uint8_t *aead_test_data_in[] = {
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	(uint8_t[]){
+		    /* IP Header & Payload */
+		    0x45, 0x00, 0x00, 0x40, 0xfe, 0xed, 0x00, 0x00,
+		    0x7f, 0x01, 0x00, 0x00, 0xc0, 0xa8, 0x01, 0x65,
+		    0xc0, 0xa8, 0x64, 0x7c, 0x14, 0x15, 0x16, 0x17,
+		    0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+		    0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
+		    0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
+		    0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+		    0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
+		    /* Padding */
+		    0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+		    /* Pad Len */
+		    0x06,
+		    /* N */
+		    0x00
+	},
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	(uint8_t[]){
+		    /* IP Header & Payload */
+		    0x45, 0x00, 0x00, 0x40, 0xfe, 0xed, 0x00, 0x00,
+		    0x7f, 0x01, 0x00, 0x00, 0xc0, 0xa8, 0x01, 0x65,
+		    0xc0, 0xa8, 0x64, 0x7c, 0x14, 0x15, 0x16, 0x17,
+		    0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+		    0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
+		    0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
+		    0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+		    0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
+		    /* Padding */
+		    0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+		    /* Pad Len */
+		    0x06,
+		    /* N */
+		    0x00
+	}
+};
+
+static uint8_t *aead_test_data_out[] = {
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	(uint8_t[]){0xde, 0xf3, 0x71, 0x2c, 0xab, 0x71, 0x83, 0xaa,
+		    0xa0, 0x5e, 0x95, 0x74, 0xc1, 0xe6, 0x12, 0x12,
+		    0xaa, 0xf2, 0x02, 0x8c, 0xe7, 0x30, 0x6b, 0x6c,
+		    0x40, 0xd0, 0x19, 0xe5, 0x3d, 0xc3, 0xd4, 0x3d,
+		    0xc4, 0x33, 0x18, 0xb3, 0xd6, 0x7d, 0xc9, 0x3a,
+		    0x0a, 0x37, 0xff, 0xbc, 0x28, 0x51, 0x1d, 0xc0,
+		    0x2b, 0xa1, 0xbc, 0x10, 0xad, 0xad, 0x8c, 0x2f,
+		    0x02, 0xaa, 0xe6, 0xa5, 0x14, 0x75, 0x58, 0x0b,
+		    0x16, 0x1e, 0xdf, 0xce, 0xb3, 0xfa, 0x47, 0xf5,
+
+		    /* ICV */
+		    0x57, 0x7c, 0x55, 0x69, 0x1e, 0x46, 0xef, 0xe2,
+		    0x08, 0x71, 0x87, 0xf3
+	},
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	(uint8_t[]){0xde, 0xf3, 0x71, 0x2c, 0xab, 0x71, 0x83, 0xaa,
+		    0xa0, 0x5e, 0x95, 0x74, 0xc1, 0xe6, 0x12, 0x12,
+		    0xaa, 0xf2, 0x02, 0x8c, 0xe7, 0x30, 0x6b, 0x6c,
+		    0x40, 0xd0, 0x19, 0xe5, 0x3d, 0xc3, 0xd4, 0x3d,
+		    0xc4, 0x33, 0x18, 0xb3, 0xd6, 0x7d, 0xc9, 0x3a,
+		    0x0a, 0x37, 0xff, 0xbc, 0x28, 0x51, 0x1d, 0xc0,
+		    0x2b, 0xa1, 0xbc, 0x10, 0xad, 0xad, 0x8c, 0x2f,
+		    0x02, 0xaa, 0xe6, 0xa5, 0x14, 0x75, 0x58, 0x0b,
+		    0x16, 0x1e, 0xdf, 0xce, 0xb3, 0xfa, 0x47, 0xf5,
+
+		    /* ICV */
+		    0x57, 0x7c, 0x55, 0x69, 0x1e, 0x46, 0xef, 0xe2,
+		    0x08, 0x71, 0x87, 0xf3,
+	}
+};
+
+static uint8_t *aead_test_data_iv[] = {
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	(uint8_t[]){0x14, 0x14, 0x14, 0x14, 0x17, 0x17, 0x17, 0x17},
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	(uint8_t[]){0x14, 0x14, 0x14, 0x14, 0x17, 0x17, 0x17, 0x17}
+};
+
+static uint32_t aead_test_data_seq_no[] = {
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	0x0000beef,
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	0x0000beef,
+};
+
+static uint32_t aead_test_data_spi[] = {
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	0x001feed,
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	0x001feed,
+};
+
+static uint32_t aead_test_data_in_len[] = {
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	64 + 8,
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	64 + 8,
+};
+
+static uint8_t *aead_test_cipher_key[] = {
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	(uint8_t[]){0x62, 0x7f, 0x46, 0x0e, 0x08, 0x10, 0x4a, 0x10,
+		    0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f, 0x30,
+		    0x43, 0xcd, 0x26, 0x5d, 0x58, 0x40, 0xea, 0xf1
+	},
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	(uint8_t[]){0x62, 0x7f, 0x46, 0x0e, 0x08, 0x10, 0x4a, 0x10,
+		    0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f, 0x30,
+		    0x43, 0xcd, 0x26, 0x5d, 0x58, 0x40, 0xea, 0xf1
+	}
+};
+
+static uint16_t aead_test_cipher_keylen[] = {
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	24,
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	24
+};
+
+static uint8_t *aead_test_auth_key[] = {
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	(uint8_t[]){0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c,
+		    0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c},
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	(uint8_t[]){0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c,
+		    0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c}
+};
+
+static uint16_t aead_test_auth_keylen[] = {
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	16,
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	16
+};
+
+static uint16_t aead_test_ivlen[] = {
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	8,
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	8
+};
+
+static uint16_t aead_test_auth_only_len[] = {
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	4 + 4 + 8,
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	4 + 4 + 8,
+};
+
+static uint8_t aead_test_icv_size[] = {
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	12,
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	12
+};
+
+static uint32_t aead_test_set_cmd[] = {
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	0x00000000,
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	0x80000010
+};
+
+static uint16_t aead_test_initial_auth_only_len[] = {
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	4 + 4 + 8,
+	/* IPsec 3DES-CBC & HMAC-MD5-96 */
+	0xef
+};
+
+#endif /* AEAD_TEST_VECTOR_H_ */

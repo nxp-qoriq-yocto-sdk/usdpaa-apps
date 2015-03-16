@@ -1,4 +1,4 @@
-/* Copyright 2013 Freescale Semiconductor, Inc.
+/* Copyright 2015 Freescale Semiconductor, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -28,67 +28,73 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __SIMPLE_PROTO_H
-#define __SIMPLE_PROTO_H
+
+#ifndef AEAD_H_
+#define AEAD_H_
 
 #include <argp.h>
 #include <inttypes.h>
 
+#include <usdpaa/compat.h>
+
+#include <flib/desc/ipsec.h>
+
 #include <crypto/test_utils.h>
-#include <crypto/sec.h>
-#include <crypto/thread_priv.h>
-#include <crypto/qman.h>
-#include <sec.h>
 
-#include "test_vector.h"
 #include "common.h"
-#include "macsec.h"
-#include "wimax.h"
-#include "pdcp.h"
-#include "srtp.h"
-#include "wifi.h"
-#include "rsa.h"
-#include "tls.h"
-#include "ipsec.h"
-#include "mbms.h"
-#include "aead.h"
 
-/* prepare test buffers, fqs, fds routines */
-int prepare_test_frames(struct test_param *crypto_info);
-void set_enc_buf(void *params, struct qm_fd fd[]);
-void set_dec_buf(void *params, struct qm_fd fd[]);
+/* IPSec ESP specific defines */
+#define SPI_SIZE	4	/* Security Parameters Index length in bytes */
+#define SEQNUM_SIZE	4	/* Sequence number length in bytes.
+				   @note: Extended SN is NOT supported */
+#define PAD_LEN_SIZE	1	/* Padding length field length in bytes */
+#define N_SIZE		1	/* Next header field length in bytes */
 
-/* validate test routines */
-static int validate_params(uint32_t cmd_args, uint32_t proto_args,
-			   struct test_param *crypto_info);
-int test_enc_match(void *params, struct qm_fd fd[]);
-int test_dec_match(void *params, struct qm_fd fd[]);
+/* AEAD specific defines */
+#define SG_IN_ENTRIES	4	/* The number of SG entries needed for input */
 
-error_t parse_opt(int opt, char *arg, struct argp_state *state);
+#define SG_IN_IV		0
+#define SG_IN_AONLY		1
+#define SG_IN_PAYLOAD		2
+#define SG_AONLY_SEQ_NUM_SPI	0
+#define SG_AONLY_IV		1
 
-struct protocol_info *(*register_protocol[])(void) = {
-		register_macsec,
-		register_wimax,
-		register_pdcp,
-		register_srtp,
-		register_wifi,
-		register_rsa,
-		register_tls,
-		register_ipsec,
-		register_mbms,
-		register_aead
+
+/**
+ * IPSEC parameter options specific defines
+ */
+#define	BMASK_AEAD_CIPHER	0x80000000  /**< Cipher selected for AEAD */
+#define	BMASK_AEAD_INTEGRITY	0x40000000  /**< Integrity selected for AEAD */
+
+#define BMASK_AEAD_VALID	(BMASK_AEAD_CIPHER | BMASK_AEAD_INTEGRITY)
+
+/**
+ * @def AEAD_TEST_ARRAY_OFFSET
+ * @brief The following macro computes the index in the AEAD test vectors array
+ * by using the following property of the test array:
+ * for each ciphering algorithm, the various parameters that can be given
+ * by the user are indexed by their actual values.
+ * In short, this macro uses the linear property of the test vectors array.
+ */
+#define AEAD_TEST_ARRAY_OFFSET(aead_params)			\
+	((aead_params)->c_alg * AEAD_AUTH_TYPE_INVALID +	\
+	 (aead_params)->i_alg)
+
+enum cipher_type_aead {
+	AEAD_CIPHER_TYPE_TDES,
+	AEAD_CIPHER_TYPE_INVALID
 };
 
-/* helper routines */
-static void set_crypto_cbs(struct test_cb *crypto_cb);
-int get_num_of_iterations(void *params);
-void set_num_of_iterations(void *params, unsigned int itr_num);
-inline int get_num_of_buffers(void *params);
-inline enum test_mode get_test_mode(void *params);
-inline uint8_t requires_authentication(void *);
-inline long get_num_of_cpus(void);
-inline pthread_barrier_t *get_thread_barrier(void);
-int register_modules(void);
-void unregister_modules(void);
+enum auth_type_aead {
+	AEAD_AUTH_TYPE_HMAC_MD5_96,
+	AEAD_AUTH_TYPE_INVALID
+};
 
-#endif /* __SIMPLE_PROTO_H */
+struct aead_params {
+	enum cipher_type_aead c_alg;
+	enum auth_type_aead i_alg;
+};
+
+struct protocol_info *register_aead(void);
+
+#endif /* AEAD_H_ */
