@@ -220,6 +220,36 @@ policy.
 		</key>
 	</distribution>
 
+	<distribution name="hash_ipv4_shared_mac_dist2">
+		<queue base="1" count="1" />
+		<protocols>
+			<protocolref name="ipv4" />
+		</protocols>
+		<action type="classification" name="ip_dest_clsf2"/>
+	</distribution>
+	<classification name="ip_dest_clsf2">
+		<key>
+			<fieldref name="ipv4.dst" />
+		</key>
+		<entry>
+			<data>0xc0a82c03</data>
+			<queue base="0x02" />
+			<action type="distribution" name="usdpaa_dist2" />
+		</entry>
+		<entry>
+			<data>0xc0a82c04</data>
+			<queue base="0x03" />
+			<action type="distribution" name="default_dist2" />
+		</entry>
+		<action type="distribution" name="default_dist2" condition="on-miss" />
+	</classification>
+	<distribution name="usdpaa_dist2">
+		<queue count="32" base="0xf00"/>
+		<key>
+			<fieldref name="ipv4.dst"/>
+		</key>
+	</distribution>
+
 	<distribution name="hash_ipv4_shared_mac_dist6">
 		<queue base="1" count="1" />
 		<protocols>
