@@ -21,18 +21,21 @@
 # LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+#NOTE: This lpm-ipfwd config automation script has been created specially for
+#T1024RDB which has one 2.5G port, which can be tested only when connected
+#back to back with another 2.5G port on T1024RDB board. Hence the left-right
+#configuration
 
-# $1, $2	- Subnets as in 192.168.$1.* and 192.168.$2.*
-# $3		- Number of sources
-# $4		- Number of destinations
-pid=$1
+pid=$2
 if [ "$pid" == "" ]
 	then
 		echo "Give PID to hook up with"
+		echo "Usage: ./script_name <left/right> <pid>"
 		exit 1
 fi
 
-net_pair_routes()
+net_directional_routes()
 {
 net=0
 	while [ "$net" -le $5 ]
@@ -43,18 +46,39 @@ net=0
 	done
 }
 
-lpm_ipfwd_config -P $pid -F -a 192.168.20.1 -i 3
-lpm_ipfwd_config -P $pid -F -a 192.168.30.1 -i 4
-lpm_ipfwd_config -P $pid -F -a 192.168.80.1 -i 81
 
-lpm_ipfwd_config -P $pid -G -s 192.168.20.2 -m 02:00:c0:a8:1e:02 -r true
-lpm_ipfwd_config -P $pid -G -s 192.168.30.2 -m 02:00:c0:a8:28:02 -r true
-lpm_ipfwd_config -P $pid -G -s 192.168.80.2 -m 02:00:c0:a8:32:02 -r true
+	lpm_ipfwd_config -P $pid -F -a 192.168.20.1 -i 3
+	lpm_ipfwd_config -P $pid -F -a 192.168.30.1 -i 4
+	lpm_ipfwd_config -P $pid -F -a 192.168.80.1 -i 81
 
-					# 1024
-net_pair_routes 193 1 16 20 255		# 256
-net_pair_routes 194 1 16 30 255		# 256
-net_pair_routes 195 1 16 80 255		# 256
-net_pair_routes 196 1 16 80 255		# 256
+if [ "$1" == "left" ]
+then
+
+	lpm_ipfwd_config -P $pid -G -s 192.168.20.2 -m 02:00:c0:a8:1e:02 -r true
+	lpm_ipfwd_config -P $pid -G -s 192.168.30.2 -m 02:00:c0:a8:28:02 -r true
+	lpm_ipfwd_config -P $pid -G -s 192.168.80.2 -m 00:04:9f:01:02:05 -r true
+
+							# 1024
+	net_directional_routes 193 1 16 20 255		# 256
+	net_directional_routes 194 1 16 30 255		# 256
+	net_directional_routes 195 1 16 80 255		# 256
+	net_directional_routes 196 1 16 80 255		# 256
+fi
+
+
+if [ "$1" == "right" ]
+then
+
+	lpm_ipfwd_config -P $pid -G -s 192.168.20.2 -m 02:00:c0:a8:1e:02 -r true
+	lpm_ipfwd_config -P $pid -G -s 192.168.30.2 -m 02:00:c0:a8:28:02 -r true
+	lpm_ipfwd_config -P $pid -G -s 192.168.80.2 -m 00:04:9f:11:12:24 -r true
+
+							# 1024
+	net_directional_routes 193 1 16 80 255		# 256
+	net_directional_routes 194 1 16 80 255		# 256
+	net_directional_routes 195 1 16 20 255		# 256
+	net_directional_routes 196 1 16 30 255		# 256
+fi
+
 
 echo LPM-IPFwd Route Creation completed

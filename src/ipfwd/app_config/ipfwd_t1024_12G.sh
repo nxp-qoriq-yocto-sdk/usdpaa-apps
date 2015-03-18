@@ -21,37 +21,63 @@
 # LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+#NOTE: This ipfwd config automation script has been created specially for
+#T1024RDB which has one 2.5G port, which can be tested only when connected
+#back to back with another 2.5G port on T1024RDB board. Hence the left-right
+#configuration
 
-# $1, $2	- Subnets as in 192.168.$1.* and 192.168.$2.*
-# $3		- Number of sources
-# $4		- Number of destinations
-pid=$1
+
+pid=$2
 if [ "$pid" == "" ]
 	then
 		echo "Give PID to hook up with"
+		echo "Usage: ./script_name <left/right> <pid>"
 		exit 1
 fi
 
-net_pair_routes()
+net_directional_routes()
 {
-	for net in $1 $2
-	do
-		ipfwd_config -P $pid -B -s 192.168.$net.2 -c $3 \
-		-d 192.168.$(expr $1 + $2 - $net).2 -n $4 \
-		-g 192.168.$(expr $1 + $2 - $net).2
-	done
+                ipfwd_config -P $pid -B -s 192.168.$1.2 -c $4 \
+                -d 192.168.$2.2 -n $5 -g 192.168.$3.2
 }
 
-ipfwd_config -P $pid -F -a 192.168.20.1	-i 3
-ipfwd_config -P $pid -F -a 192.168.30.1 -i 4
-ipfwd_config -P $pid -F -a 192.168.80.1 -i 81
+if [ "$1" == "left" ]
+then
 
-ipfwd_config -P $pid -G -s 192.168.20.2	-m 02:00:c0:a8:3c:02 -r true
-ipfwd_config -P $pid -G -s 192.168.30.2 -m 02:00:c0:a8:82:02 -r true
-ipfwd_config -P $pid -G -s 192.168.80.2 -m 02:00:c0:a8:8c:02 -r true
+	ipfwd_config -P $pid -F -a 192.168.20.1	-i 3
+	ipfwd_config -P $pid -F -a 192.168.30.1 -i 4
+	ipfwd_config -P $pid -F -a 192.168.80.1 -i 81
 
-				# 1012
-net_pair_routes	 20 80 22 23	# 2 * 22 * 23 = 506
-net_pair_routes	 30 80 22 23	# 2 * 22 * 23 = 506
+#set the mac address of the right board here for creating ARP entry
+	ipfwd_config -P $pid -G -s 192.168.20.2	-m 02:00:c0:a8:3c:02 -r true
+	ipfwd_config -P $pid -G -s 192.168.30.2 -m 02:00:c0:a8:82:02 -r true
+	ipfwd_config -P $pid -G -s 192.168.80.2 -m 00:04:9f:01:02:05 -r true
+
+					# 1012
+	net_directional_routes	 20 40 80 22 23	# 2 * 22 * 23 = 506
+	net_directional_routes	 30 50 80 22 23	# 2 * 22 * 23 = 506
+	net_directional_routes	 40 20 20 22 23	# 2 * 22 * 23 = 506
+	net_directional_routes	 50 30 30 22 23	# 2 * 22 * 23 = 506
+fi
+
+
+if [ "$1" == "right" ]
+then
+	ipfwd_config -P $pid -F -a 192.168.40.1	-i 3
+	ipfwd_config -P $pid -F -a 192.168.50.1 -i 4
+	ipfwd_config -P $pid -F -a 192.168.80.1 -i 81
+
+#set the mac address of the left board here for creating ARP entry
+	ipfwd_config -P $pid -G -s 192.168.40.2	-m 02:00:c0:a8:3c:02 -r true
+	ipfwd_config -P $pid -G -s 192.168.50.2 -m 02:00:c0:a8:82:02 -r true
+	ipfwd_config -P $pid -G -s 192.168.80.2 -m 00:04:9f:11:12:24 -r true
+
+					# 1012
+	net_directional_routes	 20 40 40 22 23	# 2 * 22 * 23 = 506
+	net_directional_routes	 30 50 50 22 23	# 2 * 22 * 23 = 506
+	net_directional_routes	 40 20 80 22 23	# 2 * 22 * 23 = 506
+	net_directional_routes	 50 30 80 22 23	# 2 * 22 * 23 = 506
+fi
 
 echo IPFwd Route Creation completed
