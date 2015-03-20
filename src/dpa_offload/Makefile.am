@@ -29,22 +29,27 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = ppac classifier_demo cpu_hotplug dma_test fra fragmentation_demo \
-	  hello_reflector ipfwd ipsecfwd ipsec_offload lpm-ipfwd pme_loopback \
-	  qbman_speed reassembly_demo reflector rmu simple_crypto simple_proto \
-	  sra
+bin_PROGRAMS = dpa_offload
 
-ifeq (B4860,$(SOC))
-SUBDIRS += srio_ipsec_offload dpa_offload
-ifeq (powerpc,$(ARCH))
-SUBDIRS += dsp_dpa
-endif
-endif
+dist_DATA = dpa_offload_config_b4860.xml \
+	    dpa_offload_pcd_b4.xml \
+	    dpa_offload_policy.xml \
+	    dpa_offload_swp.xml
 
-ifneq (,$(findstring $(SOC),B4860 T4240 T2080))
-SUBDIRS += ceetm_demo
-endif
+AM_CFLAGS := $(FMC_CFLAGS) $(FMLIB_CFLAGS) $(LIBXML2_CFLAGS) \
+	     $(LIBNL_CFLAGS) $(DPAOFFLOAD_CFLAGS) $(LIBXML2_CFLAGS) \
+	     $(LIBEDIT_CFLAGS) -Wall -Wextra
 
-ifeq (T1040,$(SOC))
-SUBDIRS += capwap
-endif
+$(bin_PROGRAMS)_SOURCES := pfkey_utils.c \
+			   nl_events.c \
+			   xfrm_events.c \
+			   dpa_offload.c \
+			   cli_cmd.c \
+			   nf_init.c
+
+$(bin_PROGRAMS)_LDADD := usdpaa_qbman usdpaa_dma_mem usdpaa_syscfg usdpaa_mm \
+			 usdpaa_fman usdpaa_of usdpaa_process
+
+$(bin_PROGRAMS)_LDFLAGS := $(LIBNL_LDFLAGS) $(DPAOFFLOAD_LDFLAGS) \
+			   $(FMC_LDFLAGS) $(FMLIB_LDFLAGS) \
+			   $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS)
