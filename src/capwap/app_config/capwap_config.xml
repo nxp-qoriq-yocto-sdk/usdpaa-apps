@@ -37,9 +37,8 @@
             <port type="MAC" number="1" policy="Policy0"/>
             <port type="MAC" number="3" policy="Policy0"/>
             <port type="MAC" number="4" policy="Policy0"/>
-            <port type="OFFLINE" number="2" policy="Policy1"/>
-            <port type="OFFLINE" number="3" policy="Policy2"/>
-            <port type="OFFLINE" number="4" policy="Policy3"/>
+            <port type="OFFLINE" number="1" policy="Policy1"/>
+            <port type="OFFLINE" number="2" policy="Policy2"/>
          </engine>
       </config>
    </cfgdata>
