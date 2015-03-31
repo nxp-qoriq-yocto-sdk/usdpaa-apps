@@ -38,10 +38,12 @@ AM_CFLAGS += $(LIBRTA_CFLAGS)
 
 ipsecfwd_app_SOURCES := ipsecfwd.c ipsecfwd_init.c ipsecfwd_handler.c \
 	ipsecfwd_splitkey.c
-ipsecfwd_app_LDADD := usdpaa_ppac usdpaa_qbman usdpaa_fman usdpaa_dma_mem \
-	usdpaa_of usdpaa_process usdpaa_mm app_ipsecfwd_ipsec app_ipsecfwd_net \
+ipsecfwd_app_LDADD := usdpaa_ppac app_ipsecfwd_ipsec app_ipsecfwd_net \
 	app_ipsecfwd_ethernet app_ipsecfwd_ip apps_ipsecfwd_arp \
-	app_ipsecfwd_refcount usdpaa_syscfg usdpaa_sec
+	app_ipsecfwd_refcount usdpaa_syscfg
+
 ipsecfwd_app_sys_LDADD := rt
-ipsecfwd_app_LDFLAGS := $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
+ipsecfwd_app_LDFLAGS := -lusdpaa_qbman -lusdpaa_fman -lusdpaa_dma_mem \
+	-lusdpaa_of -lusdpaa_process -lusdpaa_mm -lusdpaa_sec \
+	$(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
 	-T $(TOP_LEVEL)/src/ppac/ppac.lds

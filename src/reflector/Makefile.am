@@ -34,9 +34,9 @@ bin_PROGRAMS = reflector
 dist_DATA = SOURCE_THIS
 
 reflector_SOURCES := reflector.c
-reflector_LDADD := usdpaa_ppac usdpaa_syscfg usdpaa_qbman usdpaa_fman \
-		   usdpaa_dma_mem usdpaa_of usdpaa_process
-reflector_LDFLAGS := $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
+reflector_LDADD := usdpaa_ppac usdpaa_syscfg
+reflector_LDFLAGS := -lusdpaa_qbman -lusdpaa_fman -lusdpaa_dma_mem -lusdpaa_of \
+		     -lusdpaa_process $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
 		     -T $(TOP_LEVEL)/src/ppac/ppac.lds
 
 SOURCE_THIS_install = root

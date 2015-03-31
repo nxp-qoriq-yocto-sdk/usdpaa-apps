@@ -35,11 +35,11 @@ AM_CFLAGS := $(LIBEDIT_CFLAGS) -I$(TOP_LEVEL)/src/fra/include
 
 fra_SOURCES := main.c fra.c test_speed.c test_port_write.c
 fra_LDADD := fra_cfg_parser rman_interface fra_fman_port fra_fq_interface \
-	     usdpaa_syscfg usdpaa_qbman usdpaa_fman usdpaa_dma_mem \
-	     usdpaa_rman usdpaa_srio usdpaa_of usdpaa_process fra_bpool \
-	     fra_utils
+	     usdpaa_syscfg fra_bpool fra_utils
 
-fra_LDFLAGS := $(LIBEDIT_LDFLAGS) $(LIBXML2_LDFLAGS) -T $(TOP_LEVEL)/src/fra/app/fra.lds
+fra_LDFLAGS := -lusdpaa_rman -lusdpaa_qbman -lusdpaa_fman -lusdpaa_dma_mem \
+	       -lusdpaa_srio -lusdpaa_of -lusdpaa_process $(LIBEDIT_LDFLAGS) \
+	       $(LIBXML2_LDFLAGS) -T $(TOP_LEVEL)/src/fra/app/fra.lds
 
 fra_CFLAGS := -DDEF_PCD_PATH="/$(INSTALL_OTHER)/usdpaa_policy_hash_ipv4.xml" \
 	      -DDEF_CFG_PATH="/$(INSTALL_OTHER)/usdpaa_config_p3_p5_serdes_0x33.xml" \

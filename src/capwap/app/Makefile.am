@@ -36,11 +36,11 @@ capwap_CFLAGS := $(LIBEDIT_CFLAGS) -I$(TOP_LEVEL)/src/capwap/include \
 
 capwap_SOURCES := main.c
 
-capwap_LDFLAGS := $(LIBEDIT_LDFLAGS) $(LIBXML2_LDFLAGS) \
+capwap_LDFLAGS := -lusdpaa_qbman -lusdpaa_fman -lusdpaa_dma_mem -lusdpaa_of \
+		 -lusdpaa_process $(LIBEDIT_LDFLAGS) $(LIBXML2_LDFLAGS) \
 		 -T $(TOP_LEVEL)/src/capwap/app/capwap.lds
 
-capwap_LDADD := usdpaa_syscfg usdpaa_qbman usdpaa_fman usdpaa_dma_mem capwap_fslbr\
-		usdpaa_of usdpaa_process  \
+capwap_LDADD := usdpaa_syscfg capwap_fslbr \
 		capwap_fq_interface capwap_xml_parser capwap_domain
 
 capwap_sys_LDADD := fm

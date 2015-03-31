@@ -32,4 +32,5 @@
 bin_PROGRAMS = qbman_speed
 
 qbman_speed_SOURCES := main.c speed.c blastman.c
-qbman_speed_LDADD := usdpaa_qbman usdpaa_dma_mem usdpaa_of usdpaa_process
+qbman_speed_LDFLAGS := -lusdpaa_qbman -lusdpaa_dma_mem -lusdpaa_of \
+		       -lusdpaa_process

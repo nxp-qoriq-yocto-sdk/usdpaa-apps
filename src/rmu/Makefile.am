@@ -33,5 +33,5 @@ bin_PROGRAMS = rmu
 
 AM_CFLAGS := $(LIBEDIT_CFLAGS)
 rmu_SOURCES := rmu.c
-rmu_LDADD := usdpaa_rmu usdpaa_dma_mem usdpaa_of usdpaa_process
-rmu_LDFLAGS := $(LIBEDIT_LDFLAGS)
+rmu_LDFLAGS := -lusdpaa_rmu -lusdpaa_dma_mem -lusdpaa_of -lusdpaa_process \
+	       $(LIBEDIT_LDFLAGS)

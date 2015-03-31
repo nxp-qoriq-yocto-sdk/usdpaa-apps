@@ -32,9 +32,9 @@
 bin_PROGRAMS = pme_loopback_test
 
 pme_loopback_test_SOURCES := pme_loopback.c
-pme_loopback_test_LDADD := usdpaa_qbman usdpaa_dma_mem usdpaa_pme usdpaa_of \
-			   usdpaa_process
 
-pme_loopback_test_LDFLAGS := $(LIBEDIT_LDFLAGS) -T $(TOP_LEVEL)/src/pme_loopback/pme_loopback.lds
+pme_loopback_test_LDFLAGS := -lusdpaa_qbman -lusdpaa_dma_mem -lusdpaa_pme \
+			     -lusdpaa_of -lusdpaa_process $(LIBEDIT_LDFLAGS) \
+			     -T $(TOP_LEVEL)/src/pme_loopback/pme_loopback.lds
 
 pme_loopback_test_CFLAGS := $(LIBEDIT_CFLAGS)

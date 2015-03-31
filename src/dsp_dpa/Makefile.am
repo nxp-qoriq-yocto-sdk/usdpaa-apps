@@ -33,6 +33,6 @@ bin_PROGRAMS = dsp_dpa
 AM_CFLAGS := $(LIBEDIT_CFLAGS)
 
 dsp_dpa_SOURCES := main.c
-dsp_dpa_LDADD := usdpaa_qbman usdpaa_process usdpaa_of usdpaa_dma_mem
 dsp_dpa_CFLAGS := -DB4860
-dsp_dpa_LDFLAGS := $(LIBEDIT_LDFLAGS) -lipc -lmem -lrt
+dsp_dpa_LDFLAGS := -lusdpaa_qbman -lusdpaa_process -lusdpaa_of \
+		   -lusdpaa_dma_mem $(LIBEDIT_LDFLAGS) -lipc -lmem -lrt

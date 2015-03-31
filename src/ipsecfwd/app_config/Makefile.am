@@ -40,11 +40,9 @@ dist_DATA = ipsecfwd_enc_20G.sh ipsecfwd_enc_22G.sh ipsecfwd_dec_20G.sh \
 	ipsecfwd_b4860qds_mix_20G.sh ipsecfwd_t1024_mix_12G.sh
 
 AM_CFLAGS := -I$(TOP_LEVEL)/src/ipsecfwd/lib -I$(TOP_LEVEL)/src/ipsecfwd/include
-AM_CFLAGS += $(LIBRTA_CFLAGS)
+AM_CFLAGS += -lusdpaa_of $(LIBRTA_CFLAGS)
 
 ipsecfwd_config_SOURCES := ipc_send.c
-
-ipsecfwd_config_LDADD := usdpaa_of
 
 ipsecfwd_config_sys_LDADD := rt
 

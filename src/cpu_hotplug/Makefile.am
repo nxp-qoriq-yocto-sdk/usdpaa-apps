@@ -32,7 +32,8 @@
 bin_PROGRAMS = daemon
 
 daemon_SOURCES := usdpaa_hotplugd.c
-daemon_LDADD := usdpaa_ppac usdpaa_syscfg usdpaa_qbman usdpaa_fman \
-		   usdpaa_dma_mem usdpaa_of usdpaa_process
-daemon_LDFLAGS := $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
+daemon_LDADD := usdpaa_ppac usdpaa_syscfg
+
+daemon_LDFLAGS := -lusdpaa_qbman -lusdpaa_fman -lusdpaa_dma_mem -lusdpaa_of \
+		  -lusdpaa_process $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
 		     -T $(TOP_LEVEL)/src/ppac/ppac.lds

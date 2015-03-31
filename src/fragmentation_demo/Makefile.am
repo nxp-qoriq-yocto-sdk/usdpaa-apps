@@ -43,10 +43,11 @@ fragmentation_demo_CFLAGS := $(FMC_CFLAGS) $(FMLIB_CFLAGS) $(DPAOFFLOAD_CFLAGS)
 
 fragmentation_demo_SOURCES := fragmentation_demo.c
 
-fragmentation_demo_LDFLAGS := $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
+fragmentation_demo_LDFLAGS := -lusdpaa_qbman -lusdpaa_fman -lusdpaa_dma_mem \
+			      -lusdpaa_of -lusdpaa_process \
+			      $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
 			      $(FMC_LDFLAGS) $(FMLIB_LDFLAGS) \
 			      $(DPAOFFLOAD_LDFLAGS) \
 			      -T $(TOP_LEVEL)/src/ppac/ppac.lds
 
-fragmentation_demo_LDADD := usdpaa_ppac usdpaa_syscfg usdpaa_qbman usdpaa_fman \
-			    usdpaa_dma_mem usdpaa_of usdpaa_process
+fragmentation_demo_LDADD := usdpaa_ppac usdpaa_syscfg

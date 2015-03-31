@@ -47,9 +47,10 @@ $(bin_PROGRAMS)_SOURCES := pfkey_utils.c \
 			   cli_cmd.c \
 			   nf_init.c
 
-$(bin_PROGRAMS)_LDADD := usdpaa_qbman usdpaa_dma_mem usdpaa_syscfg usdpaa_mm \
-			 usdpaa_fman usdpaa_of usdpaa_process
+$(bin_PROGRAMS)_LDADD := usdpaa_syscfg
 
-$(bin_PROGRAMS)_LDFLAGS := $(LIBNL_LDFLAGS) $(DPAOFFLOAD_LDFLAGS) \
+$(bin_PROGRAMS)_LDFLAGS := -lusdpaa_qbman -lusdpaa_dma_mem -lusdpaa_mm \
+			   -lusdpaa_fman -lusdpaa_of -lusdpaa_process \
+			   $(LIBNL_LDFLAGS) $(DPAOFFLOAD_LDFLAGS) \
 			   $(FMC_LDFLAGS) $(FMLIB_LDFLAGS) \
 			   $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS)

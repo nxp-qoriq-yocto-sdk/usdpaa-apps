@@ -33,5 +33,5 @@ bin_PROGRAMS = sra
 
 AM_CFLAGS := $(LIBEDIT_CFLAGS)
 sra_SOURCES := sra.c
-sra_LDADD := usdpaa_srio usdpaa_dma usdpaa_dma_mem usdpaa_of usdpaa_process
-sra_LDFLAGS := $(LIBEDIT_LDFLAGS)
+sra_LDFLAGS := -lusdpaa_srio -lusdpaa_dma -lusdpaa_dma_mem -lusdpaa_of \
+	       -lusdpaa_process $(LIBEDIT_LDFLAGS)

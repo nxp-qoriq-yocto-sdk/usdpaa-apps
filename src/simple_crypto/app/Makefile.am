@@ -35,5 +35,6 @@ AM_CFLAGS := -I$(TOP_LEVEL)/src/simple_crypto/include -I$(TOP_LEVEL)/lib
 AM_CFLAGS += $(LIBRTA_CFLAGS)
 
 simple_crypto_SOURCES := simple_crypto.c
-simple_crypto_LDADD := usdpaa_qbman usdpaa_dma_mem usdpaa_of usdpaa_process \
-		       fslcrypto usdpaa_sec
+simple_crypto_LDADD := fslcrypto
+simple_crypto_LDFLAGS := -lusdpaa_qbman -lusdpaa_dma_mem -lusdpaa_of \
+			 -lusdpaa_process -lusdpaa_sec

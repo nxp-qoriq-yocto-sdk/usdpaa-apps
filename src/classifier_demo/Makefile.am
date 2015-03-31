@@ -44,10 +44,11 @@ classifier_demo_CFLAGS := -I$(TOP_LEVEL)/lib/hash_table \
 
 classifier_demo_SOURCES := ceetm_api.c dpa_classif_demo.c
 
-classifier_demo_LDFLAGS := $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
+classifier_demo_LDFLAGS := -lusdpaa_qbman -lusdpaa_of -lusdpaa_dma_mem \
+			   -lusdpaa_fman -lusdpaa_process \
+			   $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
 			   $(FMC_LDFLAGS) $(FMLIB_LDFLAGS) \
 			   $(DPAOFFLOAD_LDFLAGS) \
 			   -T $(TOP_LEVEL)/src/ppac/ppac.lds
 
-classifier_demo_LDADD := usdpaa_qbman usdpaa_of usdpaa_dma_mem usdpaa_ppac \
-			usdpaa_fman usdpaa_syscfg usdpaa_process hash_table
+classifier_demo_LDADD := usdpaa_ppac usdpaa_syscfg hash_table

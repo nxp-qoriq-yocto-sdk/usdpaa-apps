@@ -45,11 +45,12 @@ srio_ipsec_offload_SOURCES := srio_ipsec_offload.c pcd_init.c \
 			srio/rman_fq_interface.c \
 			srio/srio.c
 
-srio_ipsec_offload_LDADD := usdpaa_ppac usdpaa_syscfg usdpaa_qbman usdpaa_fman \
-		      usdpaa_dma_mem usdpaa_of usdpaa_process \
-                      usdpaa_rman usdpaa_srio usdpaa_dma usdpaa_sec
+srio_ipsec_offload_LDADD := usdpaa_ppac usdpaa_syscfg
 
-srio_ipsec_offload_LDFLAGS := $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
+srio_ipsec_offload_LDFLAGS := -lusdpaa_qbman -lusdpaa_fman -lusdpaa_dma_mem \
+			-lusdpaa_of -lusdpaa_process -lusdpaa_rman \
+			-lusdpaa_srio -lusdpaa_dma -lusdpaa_sec \
+			$(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
 			$(FMC_LDFLAGS) $(FMLIB_LDFLAGS) \
 			$(DPAOFFLOAD_LDFLAGS) \
 			-T $(TOP_LEVEL)/src/ppac/ppac.lds

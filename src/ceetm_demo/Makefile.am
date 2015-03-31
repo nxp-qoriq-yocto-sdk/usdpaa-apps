@@ -35,7 +35,8 @@ dist_DATA = ceetm_cfg.xml
 
 ceetm_demo_CFLAGS := $(LIBXML2_CFLAGS)
 ceetm_demo_SOURCES := ceetm_demo.c ceetm_cfg_parser.c
-ceetm_demo_LDADD := usdpaa_ppac usdpaa_syscfg usdpaa_qbman \
-		    usdpaa_fman usdpaa_dma_mem usdpaa_of usdpaa_process
-ceetm_demo_LDFLAGS := $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
+ceetm_demo_LDADD := usdpaa_ppac usdpaa_syscfg
+ceetm_demo_LDFLAGS := -lusdpaa_qbman -lusdpaa_fman -lusdpaa_dma_mem \
+		     -lusdpaa_of -lusdpaa_process \
+		     $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
 		     -T $(TOP_LEVEL)/src/ppac/ppac.lds

@@ -34,9 +34,11 @@ bin_PROGRAMS = lpm_ipfwd_app
 AM_CFLAGS := -I$(TOP_LEVEL)/src/lpm-ipfwd/lib -I$(TOP_LEVEL)/src/lpm-ipfwd/include -I$(TOP_LEVEL)/lib
 
 lpm_ipfwd_app_SOURCES :=  lpm-ipfwd.c
-lpm_ipfwd_app_LDADD := usdpaa_ppac usdpaa_qbman usdpaa_fman usdpaa_dma_mem \
-		       usdpaa_of usdpaa_process usdpaa_syscfg usdpaa_mm \
+lpm_ipfwd_app_LDADD := usdpaa_ppac usdpaa_syscfg \
 		       app_lpm_net app_lpm_ethernet app_lpm_ip \
-		       app_lpm_arp app_refcount usdpaa_syscfg
+		       app_lpm_arp app_refcount
 lpm_ipfwd_app_sys_LDADD := rt
-lpm_ipfwd_app_LDFLAGS := $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) -T $(TOP_LEVEL)/src/ppac/ppac.lds
+lpm_ipfwd_app_LDFLAGS := -lusdpaa_qbman -lusdpaa_fman -lusdpaa_dma_mem \
+			 -lusdpaa_of -lusdpaa_process -lusdpaa_mm \
+			 $(LIBXML2_LDFLAGS) $(LIBEDIT_LDFLAGS) \
+			 -T $(TOP_LEVEL)/src/ppac/ppac.lds
