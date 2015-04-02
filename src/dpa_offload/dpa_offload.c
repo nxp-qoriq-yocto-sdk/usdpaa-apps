@@ -220,6 +220,8 @@ int main(int argc, char *argv[])
 	/* This should be retrieved from xml? */
 	ui.ipsec_user_data->max_sa =
 		NUM_SETS * NUM_WAYS * DPA_IPSEC_MAX_SA_TYPE;
+	ui.ipsec_user_data->bpid = IF_BPID;
+	ui.ipsec_user_data->bufsize = DMA_MEM_IF_SIZE;
 
 	ui.ipfwd_user_data = malloc(sizeof(*ui.ipfwd_user_data));
 	if (!ui.ipfwd_user_data) {

@@ -43,6 +43,11 @@
 #define TRACE(x, ...) do { ; } while(0)
 #endif
 
+/* Interfaces and OP buffer pool */
+#define IF_BPID			16
+#define DMA_MEM_IF_SIZE		1728
+#define DMA_MEM_IF_NUM		0x4000
+
 enum ether_types {
 	ETHER_TYPE_IPv4 = 0,
 	ETHER_TYPE_IPv6,

@@ -1821,10 +1821,6 @@ static int net_if_init(unsigned idx)
  * move those to header if not patched from dts */
 #define DMA_MEM_IPF_SIZE	1600
 #define DMA_MEM_IPF_NUM		0x0
-/* Interfaces and OP buffer pool */
-#define IF_BPID			16
-#define DMA_MEM_IF_SIZE		1728
-#define DMA_MEM_IF_NUM		0x4000
 static struct bpool {
 	int bpid;
 	unsigned int num;
