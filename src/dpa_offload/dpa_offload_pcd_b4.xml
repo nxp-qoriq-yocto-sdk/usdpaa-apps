@@ -152,13 +152,13 @@
 	<!-- ob-oh-pre -->
 	<classification name="ob_pre_ipv4_cc" max="64" masks="yes" statistics="frame">
 		<key>
-			<nonheader source="key" action="exact_match" offset="0" size="14"/>
+			<nonheader source="key" action="exact_match" offset="0" size="13"/>
 		</key>
 		<action condition="on-miss" type="classification" name="ob_ipv4_local_cc" statistics="enable"/>
 	</classification>
 	<classification name="ob_pre_ipv6_cc" max="64" masks="yes" statistics="frame">
 		<key>
-			<nonheader source="key" action="exact_match" offset="0" size="38"/>
+			<nonheader source="key" action="exact_match" offset="0" size="37"/>
 		</key>
 		<action condition="on-miss" type="classification" name="ob_ipv6_local_cc" statistics="enable"/>
 	</classification>
@@ -185,7 +185,6 @@
 			<fieldref name="ipv4.src"/>
 			<fieldref name="ipv4.dst"/>
 			<fieldref name="ipv4.nextp"/>
-			<fieldref name="ipv4.tos"/>
 			<fieldref name="tcp.sport"/>
 			<fieldref name="tcp.dport"/>
 		</key>
@@ -201,7 +200,6 @@
 			<fieldref name="ipv6.src"/>
 			<fieldref name="ipv6.dst"/>
 			<fieldref name="ipv6.nexthdr"/>
-			<fieldref name="ipv6.tos"/>
 			<fieldref name="tcp.sport"/>
 			<fieldref name="tcp.dport"/>
 		</key>
@@ -217,7 +215,6 @@
 			<fieldref name="ipv4.src"/>
 			<fieldref name="ipv4.dst"/>
 			<fieldref name="ipv4.nextp"/>
-			<fieldref name="ipv4.tos"/>
 			<fieldref name="udp.sport"/>
 			<fieldref name="udp.dport"/>
 		</key>
@@ -233,7 +230,6 @@
 			<fieldref name="ipv6.src"/>
 			<fieldref name="ipv6.dst"/>
 			<fieldref name="ipv6.nexthdr"/>
-			<fieldref name="ipv6.tos"/>
 			<fieldref name="udp.sport"/>
 			<fieldref name="udp.dport"/>
 		</key>
@@ -249,7 +245,6 @@
 			<fieldref name="ipv4.src"/>
 			<fieldref name="ipv4.dst"/>
 			<fieldref name="ipv4.nextp"/>
-			<fieldref name="ipv4.tos"/>
 			<fieldref name="sctp.sport"/>
 			<fieldref name="sctp.dport"/>
 		</key>
@@ -265,7 +260,6 @@
 			<fieldref name="ipv6.src"/>
 			<fieldref name="ipv6.dst"/>
 			<fieldref name="ipv6.nexthdr"/>
-			<fieldref name="ipv6.tos"/>
 			<fieldref name="sctp.sport"/>
 			<fieldref name="sctp.dport"/>
 		</key>
@@ -332,7 +326,7 @@
 		<action condition="on-miss" type="drop" statistics="enable"/>
 		<!-- this value will be patched with corresponding
 		     Linux interface Rx fqid -->
-		<queue	base="0xcdab"/>
+		<queue base="0xcdab"/>
 	</classification>
 
 	<distribution name="ob_post_ipv4_route_dist">
