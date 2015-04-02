@@ -1664,14 +1664,19 @@ static int net_if_rx_init(struct net_if * i)
 	return 0;
 }
 
-void net_if_tx_fq_init(struct qman_fq *fq, const struct fman_if *fif,
-					   uint32_t flags)
+void net_if_tx_fq_init(struct qman_fq *fq, const struct fman_if *fif)
 {
 	struct qm_mcc_initfq opts;
 	__maybe_unused int err;
-	 uint64_t context_a = 0, context_b = 0;
+	uint64_t context_a = 0, context_b = 0;
+	uint32_t flags = 0;
 
-	 flags |= QMAN_FQ_FLAG_TO_DCPORTAL;
+	/* Set no buf dealloc on outbound offline port Tx queues: */
+	if ((fif == get_ipsec_if(OB_OH_PRE)) ||
+					(fif == get_ipsec_if(OB_OH_POST)))
+		flags |= TX_FQ_NO_BUF_DEALLOC;
+
+	flags |= QMAN_FQ_FLAG_TO_DCPORTAL;
 	/* These FQ objects need to be able to handle DQRR callbacks, when
 	 * cleaning up. */
 	fq->cb.dqrr = cb_tx_drain;
@@ -1731,7 +1736,6 @@ static int net_if_init(unsigned idx)
 	size_t size;
 	struct net_if *i;
 	struct qm_fqd_stashing stash_opts;
-	uint32_t flags = 0;
 
 	const struct fm_eth_port_cfg *cfg = &init.nfapi_init_data.netcfg->port_cfg[idx];
 	const struct fman_if *fif = cfg->fman_if;
@@ -1794,7 +1798,7 @@ static int net_if_init(unsigned idx)
 
 	for (loop = 0; loop < i->num_tx_fqs; loop++) {
 		struct qman_fq *fq = &i->tx_fqs[loop];
-		net_if_tx_fq_init(fq, fif, flags);
+		net_if_tx_fq_init(fq, fif);
 	}
 
 	/* Offline ports don't have Tx Error or Tx Confirm FQs */
