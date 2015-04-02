@@ -800,12 +800,12 @@ static const struct argp_option argp_opts[] = {
 	{"cpu-range", 0, 0, OPTION_DOC,	"'index' or 'first'..'last'"},
 	{"loopback", 'l', 0, 0, "Loopback on CAPWAP Ethernet port"},
 	{"fm", 'f', "INT", 0, "FMAN index"},
-	{"capwap-eth", 'a', "MAC-Index,type", 0, "MAC Index and type(1:1G,2:10G) for CAPWAP Ethernet Port"},
+	{"capwap-eth", 'a', "MAC-Index,type", 0, "MAC Index and type(1:1G or 2.5G,2:10G) for CAPWAP Ethernet Port"},
 	{"ib-op", 'g', "INT", 0, "Inbound Offline Port Index"},
 	{"ob-op", 'o', "INT", 0, "Outbound Offline Port Index"},
 	{"mode", 'm', "INT", 0, "Case Mode(1: default normal mode, 2: all-offload mode)"},
-	{"n-capwap-eth1", 's', "MAC-Index,type", 0, "Mode 2:MAC Index and type(1:1G,2:10G) for Non-CAPWAP Ethernet Port I"},
-	{"n-capwap-eth2", 'u', "MAC-Index,type", 0, "Mode 2:MAC Index and type(1:1G,2:10G) for Non-CAPWAP Ethernet Port II"},
+	{"n-capwap-eth1", 's', "MAC-Index,type", 0, "Mode 2:MAC Index and type(1:1G or 2.5G,2:10G) for Non-CAPWAP Ethernet Port I"},
+	{"n-capwap-eth2", 'u', "MAC-Index,type", 0, "Mode 2:MAC Index and type(1:1G or 2.5G,2:10G) for Non-CAPWAP Ethernet Port II"},
 	{}
 };
 
