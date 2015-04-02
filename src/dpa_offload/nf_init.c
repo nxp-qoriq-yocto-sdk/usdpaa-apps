@@ -831,6 +831,7 @@ static uint8_t init_dpa_ipsec_instance(void)
 {
 	int i, cls_td, ret;
 	t_Handle * cc = NULL;
+	enum rta_sec_era sec_era;
 	struct dpa_cls_tbl_params cls_tbl_params;
 	struct dpa_ipsec_params * ipsec_params = &init.nfapi_init_data.ipsec.ipsec_params;
 	struct fman_if * _if = NULL;
@@ -869,8 +870,9 @@ static uint8_t init_dpa_ipsec_instance(void)
 	}
 
 	/* INB/DL  post SEC params */
+	sec_era = INTL_SEC_ERA(sec_get_of_era());
 	ipsec_params->post_sec_in_params.data_off =
-			(rta_get_sec_era() < RTA_SEC_ERA_5)?
+			(sec_era < RTA_SEC_ERA_5)?
 			SEC_DATA_OFF_BURST :
 			SEC_ERA_5_DATA_OFF_BURST;
 	ipsec_params->post_sec_in_params.base_flow_id = IPSEC_START_IN_FLOW_ID;
@@ -916,7 +918,7 @@ static uint8_t init_dpa_ipsec_instance(void)
 
 	/* OUTB/UL post SEC params */
 	ipsec_params->post_sec_out_params.data_off =
-			 (rta_get_sec_era() < RTA_SEC_ERA_5)?
+			 (sec_era < RTA_SEC_ERA_5)?
 			 SEC_DATA_OFF_BURST :
 			 SEC_ERA_5_DATA_OFF_BURST;
 
