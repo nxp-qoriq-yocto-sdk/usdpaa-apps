@@ -175,11 +175,20 @@ const char * const ib_policy_verification_cc_label = "flow_id_cc";
 
 /*************************** FUNCTIONS ***************************/
 
-/* getter funcs - to simplify access to the init data */
-static inline struct fman_if *get_ipsec_if(enum nf_ipsec_port_role role)
+static struct fman_if *get_ipsec_if(enum nf_ipsec_port_role role)
 {
 	return (role >= 0 && role < MAX_PORTS) ?
 			init.nfapi_init_data.ipsec.ifs_by_role[role] : NULL;
+}
+
+static int set_ipsec_if(enum nf_ipsec_port_role role, struct fman_if *_if)
+{
+	if (role >= 0 && role < MAX_PORTS) {
+		init.nfapi_init_data.ipsec.ifs_by_role[role] = _if;
+		return 0;
+	}
+
+	return -EINVAL;
 }
 
 /* XML config parsing */
@@ -289,15 +298,15 @@ static int parse_ipsec_config(const char *cfg_path)
 		/* save the fman_if as per its role (policy name) */
 
 		if (!strcmp(tmp, CFG_OB_POLICY))
-			init.nfapi_init_data.ipsec.ifs_by_role[OB] = _if;
+			set_ipsec_if(OB, _if);
 		else if (!strcmp(tmp, CFG_IB_POLICY))
-			init.nfapi_init_data.ipsec.ifs_by_role[IB] = _if;
+			set_ipsec_if(IB, _if);
 		else if (!strcmp(tmp, CFG_IB_OH_POLICY))
-			init.nfapi_init_data.ipsec.ifs_by_role[IB_OH] = _if;
+			set_ipsec_if(IB_OH, _if);
 		else if (!strcmp(tmp, CFG_OB_OH_PRE_POLICY))
-			init.nfapi_init_data.ipsec.ifs_by_role[OB_OH_PRE] = _if;
+			set_ipsec_if(OB_OH_PRE, _if);
 		else if (!strcmp(tmp, CFG_OB_OH_POST_POLICY))
-			init.nfapi_init_data.ipsec.ifs_by_role[OB_OH_POST] = _if;
+			set_ipsec_if(OB_OH_POST, _if);
 		else
 			fprintf(stderr, "Warning: interface found, but not used "
 					"(idx: %d, type %d)\n", p_idx, p_type);
