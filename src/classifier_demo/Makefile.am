@@ -40,7 +40,8 @@ dist_DATA = classifier_demo_config-p4080.xml \
 	    classifier_demo_policy.xml
 
 classifier_demo_CFLAGS := -I$(TOP_LEVEL)/lib/hash_table \
-			  $(FMC_CFLAGS) $(FMLIB_CFLAGS) $(DPAOFFLOAD_CFLAGS)
+			  $(FMC_CFLAGS) $(FMLIB_CFLAGS) $(DPAOFFLOAD_CFLAGS) \
+			  -D$(SOC)
 
 classifier_demo_SOURCES := ceetm_api.c dpa_classif_demo.c
 
