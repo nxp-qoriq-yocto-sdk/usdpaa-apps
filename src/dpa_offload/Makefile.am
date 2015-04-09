@@ -38,7 +38,7 @@ dist_DATA = dpa_offload_config_b4860.xml \
 
 AM_CFLAGS := $(FMC_CFLAGS) $(FMLIB_CFLAGS) $(LIBXML2_CFLAGS) \
 	     $(LIBNL_CFLAGS) $(DPAOFFLOAD_CFLAGS) $(LIBXML2_CFLAGS) \
-	     $(LIBEDIT_CFLAGS) -Wall -Wextra
+	     $(LIBEDIT_CFLAGS) -Wall -Wextra -D$(SOC)
 
 $(bin_PROGRAMS)_SOURCES := pfkey_utils.c \
 			   nl_events.c \
