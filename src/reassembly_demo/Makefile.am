@@ -40,7 +40,8 @@ dist_DATA = reassembly_demo_config-p4080.xml \
 		reassembly_demo_policy.xml \
 		reassembly_demo_policy-v3.xml
 
-reassembly_demo_CFLAGS := $(FMC_CFLAGS) $(FMLIB_CFLAGS) $(DPAOFFLOAD_CFLAGS)
+reassembly_demo_CFLAGS := $(FMC_CFLAGS) $(FMLIB_CFLAGS) $(DPAOFFLOAD_CFLAGS) \
+		-D$(SOC)
 
 reassembly_demo_LDFLAGS := -lusdpaa_qbman -lusdpaa_fman -lusdpaa_dma_mem \
 			   -lusdpaa_of -lusdpaa_process \
