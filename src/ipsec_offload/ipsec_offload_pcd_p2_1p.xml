@@ -353,8 +353,8 @@
 	</distribution>
 	<distribution name="reass_ipv6">
 		<protocols>
-			<protocolref name="ipv4"/>
-			<protocolref name="ipv4" opt="0x00000004" />
+			<protocolref name="ipv6"/>
+			<protocolref name="ipv6" opt="0x00000004" />
 		</protocols>
 		<queue base="0xecce"/>
 	</distribution>

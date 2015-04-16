@@ -393,8 +393,8 @@
 	<distribution name="reass_ipv6">
 	    <vsp name="Non_Vipsec_Traffic" base="1"/>
 		<protocols>
-			<protocolref name="ipv4"/>
-			<protocolref name="ipv4" opt="0x00000004" />
+			<protocolref name="ipv6"/>
+			<protocolref name="ipv6" opt="0x00000004" />
 		</protocols>
 	</distribution>
 	<policy name="ib_oh_post_policy">
