@@ -668,7 +668,6 @@ void neigh_cache_change_cb(struct nl_cache *cache __maybe_unused,
 	printf("%s : %s\n", __func__, nl_act_tostr(action));
 	nl_object_dump(nl_obj, &dump_params);
 
-
 	if (family == AF_INET) {
 		if ((nf_arp_in.state & (NUD_PERMANENT|NUD_REACHABLE)) &&
 		    (action == NL_ACT_NEW)) {
@@ -811,10 +810,6 @@ void route_cache_change_cb(struct nl_cache *cache __maybe_unused,
 	    action != NL_ACT_DEL)
 		return;
 
-	/* route already offloaded */
-	if (nl_object_is_marked(nl_obj))
-		return;
-
 	if (rt_family == AF_INET)
 		ret = fill_nfapi_route_params(rt, &nfapi_rt_entry, rt_family);
 	else
@@ -823,10 +818,14 @@ void route_cache_change_cb(struct nl_cache *cache __maybe_unused,
 	if (ret < 0)
 		return;
 
-	nl_object_dump(nl_obj, &dump_params);
-
 	switch (action) {
 	case NL_ACT_NEW:
+		/* Is the route already offloaded? */
+		if (nl_object_is_marked(nl_obj))
+			return;
+
+		nl_object_dump(nl_obj, &dump_params);
+
 		if (rt_family == AF_INET) {
 			ret = nf_ip4_fwd_route_add(0, &nfapi_rt_entry,
 				     NF_API_CTRL_FLAG_NO_RESP_EXPECTED,
@@ -855,6 +854,12 @@ void route_cache_change_cb(struct nl_cache *cache __maybe_unused,
 
 		break;
 	case NL_ACT_DEL:
+		/* Check if the route is offloaded */
+		if (!nl_object_is_marked(nl_obj))
+			return;
+
+		nl_object_dump(nl_obj, &dump_params);
+
 		if (rt_family == AF_INET) {
 			nfapi_rt_del_param.dst_addr = nfapi_rt_entry.dst_addr;
 			nfapi_rt_del_param.tos = nfapi_rt_entry.tos;
@@ -883,8 +888,16 @@ void route_cache_change_cb(struct nl_cache *cache __maybe_unused,
 					nfapi_rt_del_param6.rt_table_id);
 		}
 
+		if (!ret)
+			/* route was just un-offloaded */
+			nl_object_unmark(nl_obj);
+		else if (ret != -ENOENT)
+				error(0, -ret, "Failed to remove route");
+
 		break;
 	case NL_ACT_CHANGE:
+		nl_object_dump(nl_obj, &dump_params);
+
 		if (rt_family == AF_INET) {
 			memcpy(&nfapi_rt_mod_param, &nfapi_rt_entry,
 				sizeof(nfapi_rt_mod_param));
@@ -908,9 +921,10 @@ void route_cache_change_cb(struct nl_cache *cache __maybe_unused,
 		}
 
 		if (!ret)
+			/* Mark the new route object as offloaded */
 			nl_object_mark(nl_obj);
 		else if (ret != -ENOENT)
-				error(0, -ret, "Failed to update route");
+			error(0, -ret, "Failed to update route");
 
 		break;
 	}
