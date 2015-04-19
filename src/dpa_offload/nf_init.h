@@ -128,12 +128,18 @@ struct app_init_data {
 
 #define IP4_ROUTE_TABLES		2
 #define IP6_ROUTE_TABLES		2
+#define IP4_RULE_TABLES			1
+#define IP6_RULE_TABLES			1
 
 extern t_Handle ob_pre_cc_node[DPA_IPSEC_MAX_SUPPORTED_PROTOS];
 extern t_Handle ib_pre_cc_node[DPA_IPSEC_MAX_SA_TYPE];
 extern t_Handle ip4_route_cc_node[IP4_ROUTE_TABLES];
 extern t_Handle ip6_route_cc_node[IP6_ROUTE_TABLES];
+extern t_Handle ip4_rule_cc_node[IP4_RULE_TABLES];
+extern t_Handle ip6_rule_cc_node[IP6_RULE_TABLES];
 #endif /* ENABLE_TRACE */
+
+extern unsigned int ib_ifid;
 
 int nf_init(struct nf_user_data *user_data);
 

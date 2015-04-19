@@ -71,6 +71,8 @@ t_Handle ob_pre_cc_node[DPA_IPSEC_MAX_SUPPORTED_PROTOS];
 t_Handle ib_pre_cc_node[DPA_IPSEC_MAX_SA_TYPE];
 t_Handle ip4_route_cc_node[IP4_ROUTE_TABLES];
 t_Handle ip6_route_cc_node[IP6_ROUTE_TABLES];
+t_Handle ip4_rule_cc_node[IP4_RULE_TABLES];
+t_Handle ip6_rule_cc_node[IP6_RULE_TABLES];
 #endif /* ENABLE_TRACE */
 
 /* XML Configs & netcfg */
@@ -167,6 +169,8 @@ static int ip6_route_tables			= 0;
 static struct cc_info *ip6_rule_cc_info		= NULL;
 static int ip6_rule_tables			= 0;
 
+unsigned int ib_ifid;
+
 /*
  * Names used by library to identify INBOUND policy verification
  * CC node used by IPSec.
@@ -183,12 +187,15 @@ static struct fman_if *get_ipsec_if(enum nf_ipsec_port_role role)
 
 static int set_ipsec_if(enum nf_ipsec_port_role role, struct fman_if *_if)
 {
-	if (role >= 0 && role < MAX_PORTS) {
-		init.nfapi_init_data.ipsec.ifs_by_role[role] = _if;
-		return 0;
-	}
+	if (role < 0 && role >= MAX_PORTS)
+		return -EINVAL;
 
-	return -EINVAL;
+	init.nfapi_init_data.ipsec.ifs_by_role[role] = _if;
+
+	if (role == IB)
+		ib_ifid = if_nametoindex(_if->shared_mac_info.shared_mac_name);
+
+	return 0;
 }
 
 /* XML config parsing */
@@ -311,7 +318,7 @@ static int parse_ipsec_config(const char *cfg_path)
 			fprintf(stderr, "Warning: interface found, but not used "
 					"(idx: %d, type %d)\n", p_idx, p_type);
 	}
-	/* XXX: Check if all the interfaces have been found. */
+	/* TO DO: Check if all the interfaces have been found. */
 
 	return 0;
 }
@@ -363,10 +370,36 @@ static int ipfwd_init_tables(const struct cc_info *cc_info,
 	int i, j, ret, _td;
 	struct dpa_cls_tbl_params cls_tbl_params;
 	char *ifname;
+	struct fman_if *ib_oh_if;
+	struct net_if *_if;
+	u32 tx_fqid = 0;
+
 	*res = malloc(sizeof(**res) +
 			num_tables * sizeof(struct nf_ipfwd_cc));
 	if (!res)
 		return -ENOMEM;
+
+	/*
+	 * Find the first Tx queue of the post-SEC inbound offline port for
+	 * the inbound rule tables.
+	 */
+	ib_oh_if = get_ipsec_if(IB_OH);
+	if (!ib_oh_if) {
+		error(0, ENODEV, "Unable to find inbound offline port");
+		return -ENODEV;
+	}
+
+	list_for_each_entry(_if, &init.nfapi_init_data.ifs, node) {
+		if (_if->cfg->fman_if == ib_oh_if) {
+			tx_fqid = qman_fq_fqid(&_if->tx_fqs[0]);
+			break;
+		}
+	}
+	if (!tx_fqid) {
+		error(0, ENODEV,
+			"Unable to acquire the first Tx fqId of inbound offline port");
+		return -ENODEV;
+	}
 
 	for (i = 0; i < num_tables; i++) {
 		memset(&cls_tbl_params, 0, sizeof(cls_tbl_params));
@@ -382,17 +415,26 @@ static int ipfwd_init_tables(const struct cc_info *cc_info,
 			goto err;
 
 		memset(&(*res)->nf_cc[i], 0, sizeof(struct nf_ipfwd_cc ));
+		(*res)->nf_cc[i].td = _td;
+
 		if (cc_info[i].port->mac_type == fman_offline) {
 			/* This looks like a routing table: */
-			(*res)->nf_cc[i].td = _td;
 			(*res)->nf_cc[i].action.type = DPA_CLS_TBL_ACTION_ENQ;
+			ret = qman_create_fq(tx_fqid, QMAN_FQ_FLAG_NO_MODIFY,
+				&(*res)->nf_cc[i].action.fq);
 			(*res)->nf_cc[i].rt_table_no = _td;
-			printf("\t- td=rt_table_no=%d ... ccnode=0x%x\n", _td, (unsigned)cc_info[i].handle);
+			printf("\t- td=rt_table_no=%d ... ccnode=0x%x\n", _td,
+				(unsigned)cc_info[i].handle);
+			if (ret) {
+				error(ret, 0, "Unable to create qman_fq");
+				return ret;
+			}
 			continue;
+		} else {
+			/* This is a rule table: */
+			ifname = cc_info[i].port->shared_mac_info.shared_mac_name;
+			(*res)->nf_cc[i].ifid = if_nametoindex(ifname);
 		}
-
-		ifname = cc_info[i].port->shared_mac_info.shared_mac_name;
-		(*res)->nf_cc[i].ifid = if_nametoindex(ifname);
 
 		printf("\t- td=%d, ccnode=0x%x, ifname=%s\n", _td, (unsigned)cc_info[i].handle, ifname);
 	}
@@ -661,10 +703,15 @@ int nf_ipfwd_init(void)
 	}
 
 #ifdef ENABLE_TRACE
+	/* Acquire the route and rule Cc nodes for debugging purposes: */
 	for (i = 0; i < ip4_route_tables; i++)
 		ip4_route_cc_node[i] = ip4_route_cc_info[i].handle;
 	for (i = 0; i < ip6_route_tables; i++)
 		ip6_route_cc_node[i] = ip6_route_cc_info[i].handle;
+	for (i = 0; i < ip4_rule_tables; i++)
+		ip4_rule_cc_node[i] = ip4_rule_cc_info[i].handle;
+	for (i = 0; i < ip6_rule_tables; i++)
+		ip6_rule_cc_node[i] = ip6_rule_cc_info[i].handle;
 #endif
 
 	ret = init_nf_ipfwd_global_data();

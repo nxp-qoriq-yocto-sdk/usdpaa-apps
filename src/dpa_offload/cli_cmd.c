@@ -52,6 +52,7 @@
 #include "cli_cmd.h"
 #include "xfrm_events.h"
 #include "nf_init.h"
+#include "app_common.h"
 #ifdef ENABLE_TRACE
 #include "fm_pcd_ext.h"
 #include "fsl_dpa_ipsec.h"
@@ -60,9 +61,10 @@
 static int ipsec_stats(int argc, char *argv[]);
 static int sa_stats(int argc, char *argv[]);
 static int list_sa(int argc, char *argv[]);
-static int rule_add(int argc, char *argv[]);
-static int rule_get(int argc, char *argv[]);
-static int rule_del(int argc, char *argv[]);
+static int ib_rule_add4(int argc, char *argv[]);
+static int ib_rule_add6(int argc, char *argv[]);
+static int ib_rule_del4(int argc, char *argv[]);
+static int ib_rule_del6(int argc, char *argv[]);
 #ifdef ENABLE_TRACE
 static int debug_ob_policy_miss_stats(int argc, char *argv[]);
 static int debug_ob_policy_stats(int argc, char *argv[]);
@@ -71,19 +73,20 @@ static int debug_ip4_route_miss_stats(int argc, char *argv[]);
 static int debug_ip4_route_stats(int argc, char *argv[]);
 static int debug_ip6_route_miss_stats(int argc, char *argv[]);
 static int debug_ip6_route_stats(int argc, char *argv[]);
-static int debug_ip4_rule_miss_stats(int argc, char *argv[]);
-static int debug_ip4_rule_stats(int argc, char *argv[]);
-static int debug_ip6_rule_miss_stats(int argc, char *argv[]);
-static int debug_ip6_rule_stats(int argc, char *argv[]);
+static int debug_ib_ip4_rule_miss_stats(int argc, char *argv[]);
+static int debug_ib_ip4_rule_stats(int argc, char *argv[]);
+static int debug_ib_ip6_rule_miss_stats(int argc, char *argv[]);
+static int debug_ib_ip6_rule_stats(int argc, char *argv[]);
 #endif /* ENABLE_TRACE */
 
 const struct app_cli_command cli_command[MAX_CLI_COMMANDS] = {
 	{ "ipsec_stats", ipsec_stats },
 	{ "sa_stats", sa_stats },
 	{ "list_sa", list_sa },
-	{ "rule_add", rule_add },
-	{ "rule_get", rule_get },
-	{ "rule_del", rule_del },
+	{ "ib_rule_add4", ib_rule_add4 },
+	{ "ib_rule_add6", ib_rule_add6 },
+	{ "ib_rule_del4", ib_rule_del4 },
+	{ "ib_rule_del6", ib_rule_del6 },
 #ifdef ENABLE_TRACE
 	{ "debug_ob_policy_miss_stats", debug_ob_policy_miss_stats },
 	{ "debug_ob_policy_stats", debug_ob_policy_stats },
@@ -92,10 +95,10 @@ const struct app_cli_command cli_command[MAX_CLI_COMMANDS] = {
 	{ "debug_ip4_route_stats", debug_ip4_route_stats },
 	{ "debug_ip6_route_miss_stats", debug_ip6_route_miss_stats },
 	{ "debug_ip6_route_stats", debug_ip6_route_stats },
-	{ "debug_ip4_rule_miss_stats", debug_ip4_rule_miss_stats },
-	{ "debug_ip4_rule_stats", debug_ip4_rule_stats },
-	{ "debug_ip6_rule_miss_stats", debug_ip6_rule_miss_stats },
-	{ "debug_ip6_rule_stats", debug_ip6_rule_stats },
+	{ "debug_ib_ip4_rule_miss_stats", debug_ib_ip4_rule_miss_stats },
+	{ "debug_ib_ip4_rule_stats", debug_ib_ip4_rule_stats },
+	{ "debug_ib_ip6_rule_miss_stats", debug_ib_ip6_rule_miss_stats },
+	{ "debug_ib_ip6_rule_stats", debug_ib_ip6_rule_stats },
 #else
 	{ "", NULL },
 	{ "", NULL },
@@ -109,7 +112,6 @@ const struct app_cli_command cli_command[MAX_CLI_COMMANDS] = {
 	{ "", NULL },
 	{ "", NULL },
 #endif /* ENABLE_TRACE */
-	{ "", NULL },
 	{ "", NULL },
 	{ "", NULL }
 };
@@ -251,291 +253,291 @@ static int list_sa(int argc __attribute__ ((unused)),
 	return 0;
 }
 
-static int rule_add(int argc, char *argv[])
+static void acquire_ip4_rule_params(char *argv[], struct nf_ip4_fwd_pbr_rule *ip4_rule)
 {
-	if (argc < 6)
-		return -EINVAL;
+	char *ch;
+	struct sockaddr_in addr;
 
-	if (!strcmp(argv[1], "ipv4")) {
-		int ifid;
-		struct nf_ip4_fwd_pbr_rule nfapi_rule;
-		struct nf_ip4_fwd_rule_outargs out_args;
-		int ret = 0;
-		char *ch;
-		struct sockaddr_in sa;
+	/* Acquire source IPv4 address */
+	memset(&addr, 0, sizeof(addr));
+	ch = strtok(argv[1], "/");
+	str_ton(AF_INET, ch, &addr);
+	ip4_rule->src_addr = addr.sin_addr.s_addr;
+	ch = strtok(NULL, "/");
+	ip4_rule->srcip_prefix = atoi(ch);
 
-		memset(&nfapi_rule, 0 , sizeof(nfapi_rule));
-		memset(&sa, 0, sizeof(sa));
-		ch = strtok(argv[2], "/");
-		str_ton(AF_INET, ch, &sa);
-		nfapi_rule.src_addr = sa.sin_addr.s_addr;
-		ch = strtok(NULL, "/");
-		nfapi_rule.srcip_prefix = atoi(ch);
-		ifid = if_nametoindex(argv[3]);
-		if (ifid)
-			nfapi_rule.in_ifid = ifid;
-		else
-			return -EINVAL;
-
-		nfapi_rule.priority = atoi(argv[4]);
-		if (argc > 6) {
-			nfapi_rule.tos = strtol(argv[5],  NULL, 16);
-			nfapi_rule.rt_table_no =  atoi(argv[6]);
-		} else
-			nfapi_rule.rt_table_no = atoi(argv[5]);
-		ret = nf_ip4_fwd_pbr_rule_add(0, &nfapi_rule,
-				   NF_API_CTRL_FLAG_NO_RESP_EXPECTED, &out_args,
-				   NULL);
-		if (ret) {
-			printf("nf_ip4_fwd_pbr_rule_add. Error (%d)\n", ret);
-			return -EINVAL;
-		}
-
-	} else if (!strcmp(argv[1], "ipv6")) {
-		int ifid, ret = 0;
-		struct nf_ip6_fwd_pbr_rule nfapi_rule;
-		struct nf_ip6_fwd_pbr_rule_outargs out_args;
-		char *ch;
-		struct sockaddr_in6 sa;
-
-		memset(&nfapi_rule, 0 , sizeof(nfapi_rule));
-		memset(&sa, 0, sizeof(sa));
-		ch = strtok(argv[2], "/");
-		str_ton(AF_INET6, ch, &sa);
-		memcpy(nfapi_rule.src_addr.w_addr,
-			sa.sin6_addr.s6_addr,
-			sizeof(struct in6_addr));
-		ch = strtok(NULL, "/");
-		nfapi_rule.srcip_prefix = atoi(ch);
-		ifid = if_nametoindex(argv[3]);
-		if (ifid)
-			nfapi_rule.in_ifid = ifid;
-		else
-			return -EINVAL;
-
-		nfapi_rule.priority = atoi(argv[4]);
-		if (argc > 6) {
-			nfapi_rule.tc = strtol(argv[5], NULL, 16);
-			nfapi_rule.rt_table_no = atoi(argv[6]);
-		} else
-			nfapi_rule.rt_table_no = atoi(argv[5]);
-		ret = nf_ip6_fwd_pbr_rule_add(0, &nfapi_rule,
-				   NF_API_CTRL_FLAG_NO_RESP_EXPECTED, &out_args,
-				   NULL);
-		if (ret) {
-			printf("nf_ip6_fwd_pbr_rule_add. Error (%d)\n", ret);
-			return -EINVAL;
-		}
-
-	} else
-		return -EINVAL;
-
-	return 0;
+	/* Acquire destination IPv4 address */
+	memset(&addr, 0, sizeof(addr));
+	ch = strtok(argv[2], "/");
+	str_ton(AF_INET, ch, &addr);
+	ip4_rule->dst_addr = addr.sin_addr.s_addr;
+	ch = strtok(NULL, "/");
+	ip4_rule->dstip_prefix = atoi(ch);
 }
 
-static int rule_get(int argc, char *argv[])
+static void acquire_ip6_rule_params(char *argv[], struct nf_ip6_fwd_pbr_rule *ip6_rule)
 {
-	struct in_addr saddr_in;
-	struct in6_addr saddr_in6;
-	struct in_addr daddr_in;
-	struct in6_addr daddr_in6;
-	char dst[INET6_ADDRSTRLEN];
-	char iif_name[6];
-	const char *get_first = "get_first";
-	const char *get_next = "get_next";
-	const char *get_exact = "get_exact";
-	int family;
+	char *ch;
+	struct sockaddr_in6 addr;
 
-	if (strcmp(argv[2], get_first) && (argc < 3))
+	/* Acquire source IPv6 address */
+	memset(&addr, 0, sizeof(addr));
+	ch = strtok(argv[1], "/");
+	str_ton(AF_INET6, ch, &addr);
+	memcpy(ip6_rule->src_addr.w_addr, addr.sin6_addr.s6_addr,
+			sizeof(struct in6_addr));
+	ch = strtok(NULL, "/");
+	ip6_rule->srcip_prefix = atoi(ch);
+
+	/* Acquire destination IPv6 address */
+	memset(&addr, 0, sizeof(addr));
+	ch = strtok(argv[2], "/");
+	str_ton(AF_INET6, ch, &addr);
+	memcpy(ip6_rule->dst_addr.w_addr, addr.sin6_addr.s6_addr,
+			sizeof(struct in6_addr));
+	ch = strtok(NULL, "/");
+	ip6_rule->dstip_prefix = atoi(ch);
+}
+
+static int ib_rule_add4(int argc, char *argv[])
+{
+	struct nf_ip4_fwd_pbr_rule nfapi_rule;
+	struct nf_ip4_fwd_rule_outargs out_args;
+	int ret;
+
+	if (argc < 5) {
+		printf("\nSyntax: %s <src_ip>/<prefix> <dst_ip>/<prefix> <priority>\n\t\t<dest_route_table_no> [ <hex_tos> ]\n\n",
+			__func__);
 		return -EINVAL;
-
-	if (!strcmp(argv[1], "ipv4")) {
-		int ret = 0;
-		struct nf_ip4_fwd_pbr_rule_get_inargs inargs;
-		struct nf_ip4_fwd_pbr_rule_get_outargs out;
-		void *saddr, *daddr;
-
-		family = AF_INET;
-		memset(&inargs, 0,
-				sizeof(struct nf_ip4_fwd_pbr_rule_get_inargs));
-		memset(&out, 0,
-				sizeof(struct nf_ip4_fwd_pbr_rule_get_outargs));
-		if (!strcmp(argv[2], get_first))
-			inargs.operation = NF_IP4_FWD_PBR_GET_FIRST;
-		else if (!strcmp(argv[2], get_next))
-			inargs.operation = NF_IP4_FWD_PBR_GET_NEXT;
-		else if (!strcmp(argv[2], get_exact))
-			inargs.operation = NF_IP4_FWD_PBR_GET_EXACT;
-		else
-			return -EINVAL;
-
-		if (!strcmp(argv[2], get_first)) {
-			if (argc != 3)
-				return -EINVAL;
-
-			goto get_rule_ipv4;
-		}
-
-		inargs.pbr_rule_params.priority = atoi(argv[3]);
-
-get_rule_ipv4:
-		ret = nf_ip4_fwd_pbr_get(0, &inargs,
-				NF_API_CTRL_FLAG_NO_RESP_EXPECTED,
-				&out, NULL);
-		if (!ret) {
-			saddr_in.s_addr = out.pbr_rule_params.src_addr;
-			daddr_in.s_addr = out.pbr_rule_params.dst_addr;
-			saddr = &saddr_in.s_addr;
-			daddr = &daddr_in.s_addr;
-			printf("\npriority %d ",
-				out.pbr_rule_params.priority);
-			printf("saddr %s ", inet_ntop(family,
-				saddr, dst, sizeof(dst)));
-			printf("daddr %s ", inet_ntop(family,
-				daddr, dst, sizeof(dst)));
-			if (out.pbr_rule_params.tos)
-				printf("tos 0x%x ", out.pbr_rule_params.tos);
-			if_indextoname(out.pbr_rule_params.in_ifid, iif_name);
-			printf("iif %s ", iif_name);
-			printf("table %d\n\n", out.pbr_rule_params.rt_table_no);
-		} else {
-			printf("nf_ip4_fwd_pbr_get. Error (%d)\n", ret);
-			return -EINVAL;
-		}
-	} else if (!strcmp(argv[1], "ipv6")) {
-		int ret = 0;
-		struct nf_ip6_fwd_pbr_rule_get_inargs inargs;
-		struct nf_ip6_fwd_pbr_rule_get_outargs out;
-		void *saddr, *daddr;
-
-		family = AF_INET6;
-		memset(&inargs, 0,
-				sizeof(struct nf_ip6_fwd_pbr_rule_get_inargs));
-		memset(&out, 0,
-				sizeof(struct nf_ip6_fwd_pbr_rule_get_outargs));
-		if (!strcmp(argv[2], get_first))
-			inargs.operation = NF_IP6_FWD_PBR_GET_FIRST;
-		else if (!strcmp(argv[2], get_next))
-			inargs.operation = NF_IP6_FWD_PBR_GET_NEXT;
-		else if (!strcmp(argv[2], get_exact))
-			inargs.operation = NF_IP6_FWD_PBR_GET_EXACT;
-		else
-			return -EINVAL;
-
-		if (!strcmp(argv[2], get_first)) {
-			if (argc != 3)
-				return -EINVAL;
-
-			goto get_rule_ipv6;
-		}
-
-		inargs.pbr_rule_params.priority = atoi(argv[3]);
-
-get_rule_ipv6:
-		ret = nf_ip6_fwd_pbr_rule_get(0, &inargs,
-				NF_API_CTRL_FLAG_NO_RESP_EXPECTED,
-				&out, NULL);
-
-		if (!ret) {
-			memcpy(&saddr_in6.s6_addr,
-			       out.pbr_rule_params.src_addr.w_addr,
-			       sizeof(saddr_in6.s6_addr));
-			memcpy(daddr_in6.s6_addr,
-			       out.pbr_rule_params.dst_addr.w_addr,
-			       sizeof(daddr_in6.s6_addr));
-			saddr = &saddr_in6.s6_addr;
-			daddr = &daddr_in6.s6_addr;
-			printf("\npriority %d ",
-				out.pbr_rule_params.priority);
-			printf("saddr %s ", inet_ntop(family,
-				saddr, dst, sizeof(dst)));
-			printf("daddr %s ", inet_ntop(family,
-				daddr, dst, sizeof(dst)));
-			if (out.pbr_rule_params.tc)
-				printf("tos 0x%x ", out.pbr_rule_params.tc);
-			if_indextoname(out.pbr_rule_params.in_ifid, iif_name);
-			printf("iif %s ", iif_name);
-			printf("table %d\n", out.pbr_rule_params.rt_table_no);
-		} else {
-			printf("nf_ip6_fwd_pbr_get. Error (%d)\n", ret);
-			return -EINVAL;
-		}
-
 	}
 
+	memset(&nfapi_rule, 0 , sizeof(struct nf_ip4_fwd_pbr_rule));
+
+	if (ib_ifid) {
+		nfapi_rule.in_ifid = ib_ifid;
+		nfapi_rule.flags = NF_IP4_PBR_IN_IFACE_VALID;
+	} else {
+		error(0, EBADF, "Inbound interface Id is unknown at this time");
+		return -EBADF;
+	}
+
+	acquire_ip4_rule_params(argv, &nfapi_rule);
+
+	nfapi_rule.priority = atoi(argv[3]);
+
+	nfapi_rule.rt_table_no = atoi(argv[4]);
+
+	printf("\nAdding IPv4 inbound rule\n");
+	TRACE("\t- Source: 0x%08x / %d\n", nfapi_rule.src_addr,
+						nfapi_rule.srcip_prefix);
+	TRACE("\t- Dest:   0x%08x / %d\n", nfapi_rule.dst_addr,
+						nfapi_rule.dstip_prefix);
+	TRACE("\t- Priority: %d\n", nfapi_rule.priority);
+	TRACE("\t- Destination route table: %d\n", nfapi_rule.rt_table_no);
+
+	if (argc > 5) {
+		nfapi_rule.tos = strtol(argv[5], NULL, 16);
+		TRACE("\t- TOS: 0x%x\n", nfapi_rule.tos);
+#ifdef ENABLE_TRACE
+	} else
+		TRACE("\t- TOS: n/a\n");
+#else
+	}
+#endif /* ENABLE_TRACE */
+
+	ret = nf_ip4_fwd_pbr_rule_add(0, &nfapi_rule,
+			   NF_API_CTRL_FLAG_NO_RESP_EXPECTED, &out_args,
+			   NULL);
+	if (ret) {
+		error(0, -ret, "nf_ip4_fwd_pbr_rule_add");
+		return ret;
+	}
+
+	printf("\nSuccess.\n\n");
 	return 0;
 }
 
-static int rule_del(int argc, char *argv[])
+static int ib_rule_add6(int argc, char *argv[])
 {
-	if (argc < 5)
+	struct nf_ip6_fwd_pbr_rule nfapi_rule;
+	struct nf_ip6_fwd_pbr_rule_outargs out_args;
+	int ret;
+#ifdef ENABLE_TRACE
+	int i;
+#endif /* ENABLE_TRACE */
+
+	if (argc < 5) {
+		printf("\nSyntax: %s <src_ip>/<prefix> <dst_ip>/<prefix> <priority>\n\t\t<dest_route_table_no> [ <hex_tos> ]\n\n",
+			__func__);
 		return -EINVAL;
+	}
 
-	if (!strcmp(argv[1], "ipv4")) {
-		struct nf_ip4_fwd_pbr_rule_del nfapi_rule;
-		int ret = 0, ifid;
-		char *ch;
-		struct sockaddr_in sa;
+	memset(&nfapi_rule, 0 , sizeof(nfapi_rule));
 
-		memset(&nfapi_rule, 0 , sizeof(nfapi_rule));
-		memset(&sa, 0, sizeof(sa));
+	if (ib_ifid) {
+		nfapi_rule.in_ifid = ib_ifid;
+		nfapi_rule.flags = NF_IP6_PBR_IN_IFACE_VALID;
+	} else {
+		error(0, EBADF, "Inbound interface Id is unknown at this time");
+		return -EBADF;
+	}
 
-		ch = strtok(argv[2], "/");
-		str_ton(AF_INET, ch, &sa);
-		nfapi_rule.src_addr = sa.sin_addr.s_addr;
-		ch = strtok(NULL, "/");
-		nfapi_rule.srcip_prefix = atoi(ch);
-		nfapi_rule.priority = atoi(argv[4]);
-		ifid = if_nametoindex(argv[3]);
-		if (ifid)
-			nfapi_rule.in_ifid = ifid;
-		else
-			return -EINVAL;
+	acquire_ip6_rule_params(argv, &nfapi_rule);
 
-		if (argc > 5)
-			nfapi_rule.tos = strtol(argv[5], NULL, 16);
+	nfapi_rule.priority = atoi(argv[3]);
 
-		ret = nf_ip4_fwd_pbr_rule_delete(0, &nfapi_rule,
-					      NF_API_CTRL_FLAG_NO_RESP_EXPECTED,
-					      NULL, NULL);
-		if (ret) {
-			printf("nf_ip4_fwd_pbr_rule_delete. Error (%d)\n", ret);
-			return -EINVAL;
-		}
-	} else if (!strcmp(argv[1], "ipv6")) {
-		int ifid, ret = 0;
-		struct nf_ip6_fwd_pbr_rule_del nfapi_rule;
-		char *ch;
-		struct sockaddr_in6 sa;
+	nfapi_rule.rt_table_no = atoi(argv[4]);
 
-		memset(&nfapi_rule, 0 , sizeof(nfapi_rule));
-		memset(&sa, 0, sizeof(sa));
+	printf("\nAdding IPv6 inbound rule\n");
+#ifdef ENABLE_TRACE
+	TRACE("\t- Source: ");
+	for (i = 0; i < NF_IPV6_ADDRU32_LEN - 1; i++)
+		TRACE("%04x:", nfapi_rule.src_addr.w_addr[i]);
+	TRACE("%04x / %d\n", nfapi_rule.src_addr.w_addr[i],
+						nfapi_rule.srcip_prefix);
+	TRACE("\t- Dest: ");
+	for (i = 0; i < NF_IPV6_ADDRU32_LEN - 1; i++)
+		TRACE("%04x:", nfapi_rule.dst_addr.w_addr[i]);
+	TRACE("%04x / %d\n", nfapi_rule.dst_addr.w_addr[i],
+						nfapi_rule.dstip_prefix);
+	TRACE("\t- Priority: %d\n", nfapi_rule.priority);
+	TRACE("\t- Destination route table: %d\n", nfapi_rule.rt_table_no);
+#endif /* ENABLE_TRACE */
 
-		ch = strtok(argv[2], "/");
-		str_ton(AF_INET6, ch, &sa);
-		memcpy(nfapi_rule.src_addr.w_addr, sa.sin6_addr.s6_addr,
-			sizeof(struct in6_addr));
-		ch = strtok(NULL, "/");
-		nfapi_rule.srcip_prefix = atoi(ch);
-		ifid = if_nametoindex(argv[3]);
-		if (ifid)
-			nfapi_rule.in_ifid = ifid;
-		else
-			return -EINVAL;
-
-		nfapi_rule.priority = atoi(argv[4]);
-		if (argc > 5)
-			nfapi_rule.tc = strtol(argv[5], NULL, 16);
-		ret = nf_ip6_fwd_pbr_rule_delete(0, &nfapi_rule,
-				      	      NF_API_CTRL_FLAG_NO_RESP_EXPECTED,
-					      NULL, NULL);
-		if (ret) {
-			printf("nf_ip6_fwd_pbr_rule_delete. Error (%d)\n", ret);
-			return -EINVAL;
-		}
+	if (argc > 5) {
+		nfapi_rule.tc = strtol(argv[5], NULL, 16);
+		TRACE("\t- TC: 0x%x\n", nfapi_rule.tc);
+#ifdef ENABLE_TRACE
 	} else
-		return -EINVAL;
+		TRACE("\t- TC: n/a\n");
+#else
+	}
+#endif /* ENABLE_TRACE */
 
+	ret = nf_ip6_fwd_pbr_rule_add(0, &nfapi_rule,
+			   NF_API_CTRL_FLAG_NO_RESP_EXPECTED, &out_args,
+			   NULL);
+	if (ret) {
+		error(0, -ret, "nf_ip6_fwd_pbr_rule_add");
+		return ret;
+	}
+
+	printf("\nSuccess.\n\n");
+	return 0;
+}
+
+static int ib_rule_del4(int argc, char *argv[])
+{
+	struct nf_ip4_fwd_pbr_rule_del nfapi_rule_del;
+	int ret;
+
+	if (argc < 3) {
+		printf("\nSyntax: %s <src_ip>/<prefix> <dst_ip>/<prefix> [ <hex_tos> ]\n\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	memset(&nfapi_rule_del, 0 , sizeof(struct nf_ip4_fwd_pbr_rule_del));
+
+	if (ib_ifid) {
+		nfapi_rule_del.in_ifid = ib_ifid;
+		nfapi_rule_del.flags = NF_IP4_PBR_IN_IFACE_VALID;
+	} else {
+		error(0, EBADF, "Inbound interface Id is unknown at this time");
+		return -EBADF;
+	}
+
+	acquire_ip4_rule_params(argv, (struct nf_ip4_fwd_pbr_rule*)&nfapi_rule_del);
+
+	printf("\nRemove IPv4 inbound rule\n");
+	TRACE("\t- Source: 0x%08x / %d\n", nfapi_rule_del.src_addr,
+						nfapi_rule_del.srcip_prefix);
+	TRACE("\t- Dest:   0x%08x / %d\n", nfapi_rule_del.dst_addr,
+						nfapi_rule_del.dstip_prefix);
+
+	if (argc > 3) {
+		nfapi_rule_del.tos = strtol(argv[3], NULL, 16);
+		TRACE("\t- TOS: 0x%x\n", nfapi_rule_del.tos);
+#ifdef ENABLE_TRACE
+	} else
+		TRACE("\t- TOS: n/a\n");
+#else
+	}
+#endif /* ENABLE_TRACE */
+
+	ret = nf_ip4_fwd_pbr_rule_delete(0, &nfapi_rule_del,
+				      NF_API_CTRL_FLAG_NO_RESP_EXPECTED,
+				      NULL, NULL);
+	if (ret) {
+		error(0, -ret, "nf_ip4_fwd_pbr_rule_delete");
+		return -EINVAL;
+	}
+
+	printf("\nSuccess.\n\n");
+	return 0;
+}
+
+static int ib_rule_del6(int argc, char *argv[])
+{
+	struct nf_ip6_fwd_pbr_rule_del nfapi_rule_del;
+	int ret;
+#ifdef ENABLE_TRACE
+	int i;
+#endif /* ENABLE_TRACE */
+
+	if (argc < 3) {
+		printf("\nSyntax: %s <src_ip>/<prefix> <dst_ip>/<prefix> [ <hex_tos> ]\n\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	memset(&nfapi_rule_del, 0 , sizeof(struct nf_ip6_fwd_pbr_rule_del));
+
+	if (ib_ifid) {
+		nfapi_rule_del.in_ifid = ib_ifid;
+		nfapi_rule_del.flags = NF_IP6_PBR_IN_IFACE_VALID;
+	} else {
+		error(0, EBADF, "Inbound interface Id is unknown at this time");
+		return -EBADF;
+	}
+
+	acquire_ip6_rule_params(argv, (struct nf_ip6_fwd_pbr_rule*)&nfapi_rule_del);
+
+	printf("\nRemove IPv6 inbound rule\n");
+#ifdef ENABLE_TRACE
+	TRACE("\t- Source: ");
+	for (i = 0; i < NF_IPV6_ADDRU32_LEN - 1; i++)
+		TRACE("%04x:", nfapi_rule_del.src_addr.w_addr[i]);
+	TRACE("%04x / %d\n", nfapi_rule_del.src_addr.w_addr[i],
+						nfapi_rule_del.srcip_prefix);
+	TRACE("\t- Dest: ");
+	for (i = 0; i < NF_IPV6_ADDRU32_LEN - 1; i++)
+		TRACE("%04x:", nfapi_rule_del.dst_addr.w_addr[i]);
+	TRACE("%04x / %d\n", nfapi_rule_del.dst_addr.w_addr[i],
+						nfapi_rule_del.dstip_prefix);
+	TRACE("\t- Priority: %d\n", nfapi_rule_del.priority);
+	TRACE("\t- Destination route table: %d\n", nfapi_rule_del.rt_table_no);
+#endif /* ENABLE_TRACE */
+
+	if (argc > 3) {
+		nfapi_rule_del.tc = strtol(argv[3], NULL, 16);
+		TRACE("\t- TC: 0x%x\n", nfapi_rule_del.tc);
+#ifdef ENABLE_TRACE
+	} else
+		TRACE("\t- TC: n/a\n");
+#else
+	}
+#endif /* ENABLE_TRACE */
+
+	ret = nf_ip6_fwd_pbr_rule_delete(0, &nfapi_rule_del,
+				      NF_API_CTRL_FLAG_NO_RESP_EXPECTED,
+				      NULL, NULL);
+	if (ret) {
+		error(0, -ret, "nf_ip6_fwd_pbr_rule_delete");
+		return -EINVAL;
+	}
+
+	printf("\nSuccess.\n\n");
 	return 0;
 }
 
@@ -702,7 +704,9 @@ static int debug_ip4_route_stats(int argc __attribute__ ((unused)),
 	int ret;
 
 	if (argc < 3) {
-		printf("\nSyntax: %s <table_idx> <entry_idx>\n\n", __func__);
+		printf("\nSyntax: %s <ip4_route_table_idx> <route_entry_idx>\n\n", __func__);
+		printf("Note: ip4_route_table_idx should be in the range 0 - %d.\n",
+			IP4_ROUTE_TABLES - 1);
 		return -EINVAL;
 	}
 
@@ -745,7 +749,9 @@ static int debug_ip6_route_stats(int argc, char *argv[])
 	int ret;
 
 	if (argc < 3) {
-		printf("\nSyntax: %s <table_idx> <entry_idx>\n\n", __func__);
+		printf("\nSyntax: %s <ip6_route_table_idx> <entry_idx>\n\n", __func__);
+		printf("Note: ip6_route_table_idx should be in the range 0 - %d.\n",
+			IP6_ROUTE_TABLES - 1);
 		return -EINVAL;
 	}
 
@@ -768,27 +774,95 @@ static int debug_ip6_route_stats(int argc, char *argv[])
 	return ret;
 }
 
-static int debug_ip4_rule_miss_stats(int argc __attribute__ ((unused)),
+static int debug_ib_ip4_rule_miss_stats(int argc __attribute__ ((unused)),
 			char *argv[] __attribute__ ((unused)))
 {
-	return -ENOTSUP;
+	int ret = 0;
+
+	printf("Dumping IPv4 rule MISS statistics:\n");
+	ret = dump_match_table_miss_stats(ip4_rule_cc_node,
+					IP4_RULE_TABLES);
+	printf("\n");
+
+	return ret;
 }
 
-static int debug_ip4_rule_stats(int argc __attribute__ ((unused)),
+static int debug_ib_ip4_rule_stats(int argc __attribute__ ((unused)),
 			char *argv[] __attribute__ ((unused)))
 {
-	return -ENOTSUP;
+	int table_idx;
+	int entry_idx;
+	int ret;
+
+	if (argc < 3) {
+		printf("\nSyntax: %s <ip4_rule_table_idx> <entry_idx>\n\n", __func__);
+		printf("Note: ip4_rule_table_idx should be in the range 0 - %d.\n",
+			IP4_RULE_TABLES - 1);
+		return -EINVAL;
+	}
+
+	table_idx = atoi(argv[1]);
+	entry_idx = atoi(argv[2]);
+
+	if ((table_idx < 0) || (table_idx >= IP4_RULE_TABLES)) {
+		printf("IPv4 rule table #%d is out of range. Only indexes in the range 0-%d are available.\n\n",
+			table_idx, IP4_RULE_TABLES - 1);
+		return -EINVAL;
+	}
+
+	printf("IPv4 rule table #%d (ccnode=0x%x):\n",
+		table_idx, (unsigned)ip4_rule_cc_node[table_idx]);
+
+	ret = dump_match_table_entry_stats(ip4_rule_cc_node[table_idx],
+					entry_idx);
+	printf("\n");
+
+	return ret;
 }
 
-static int debug_ip6_rule_miss_stats(int argc __attribute__ ((unused)),
+static int debug_ib_ip6_rule_miss_stats(int argc __attribute__ ((unused)),
 			char *argv[] __attribute__ ((unused)))
 {
-	return -ENOTSUP;
+	int ret = 0;
+
+	printf("Dumping IPv6 rule MISS statistics:\n");
+	ret = dump_match_table_miss_stats(ip6_rule_cc_node,
+					IP6_RULE_TABLES);
+	printf("\n");
+
+	return ret;
 }
 
-static int debug_ip6_rule_stats(int argc __attribute__ ((unused)),
+static int debug_ib_ip6_rule_stats(int argc __attribute__ ((unused)),
 			char *argv[] __attribute__ ((unused)))
 {
-	return -ENOTSUP;
+	int table_idx;
+	int entry_idx;
+	int ret;
+
+	if (argc < 3) {
+		printf("\nSyntax: %s <ip6_rule_table_idx> <entry_idx>\n\n", __func__);
+		printf("Note: ip6_rule_table_idx should be in the range 0 - %d.\n",
+			IP6_RULE_TABLES - 1);
+		return -EINVAL;
+	}
+
+	table_idx = atoi(argv[1]);
+	entry_idx = atoi(argv[2]);
+
+	if ((table_idx < 0) || (table_idx >= IP6_RULE_TABLES)) {
+		printf("IPv6 rule table #%d is out of range. Only indexes in the range 0-%d are available.\n\n",
+			table_idx, IP6_RULE_TABLES - 1);
+		return -EINVAL;
+	}
+
+	printf("IPv6 rule table #%d (ccnode=0x%x):\n",
+		table_idx, (unsigned)ip6_rule_cc_node[table_idx]);
+
+	ret = dump_match_table_entry_stats(ip6_rule_cc_node[table_idx],
+					entry_idx);
+	printf("\n");
+
+	return ret;
 }
 #endif /* ENABLE_TRACE */

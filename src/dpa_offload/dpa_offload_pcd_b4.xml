@@ -458,7 +458,9 @@
 			<protocolref name="ipv6"/>
 		</protocols>
 		<key>
+			<fieldref name="ipv6.src"/>
 			<fieldref name="ipv6.dst"/>
+			<fieldref name="ipv6.tos"/>
 		</key>
 		<action type="classification" name="ib_ipv6_rule_cc"/>
 		<queue count="1" base="0x2e81"/>
