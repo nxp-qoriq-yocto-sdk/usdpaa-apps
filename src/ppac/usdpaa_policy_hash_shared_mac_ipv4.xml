@@ -366,7 +366,7 @@ policy.
 		<action type="distribution" name="default_dist3" condition="on-miss" />
 	</classification>
 	<distribution name="usdpaa_dist3">
-		<queue count="32" base="0x800"/>
+		<queue count="32" base="0x700"/>
 		<key>
 			<fieldref name="ipv4.dst"/>
 		</key>
