@@ -39,7 +39,7 @@
 <netpcd>
 <!-- ib-eth port -->
 	<distribution name="ib_rx_default_dist">
-		<queue count="1" base="0x63"/>
+		<queue count="1" base="0x10e0"/>
 	</distribution>
 
 	<policy name="ib_rx_policy">
@@ -50,7 +50,7 @@
 
 <!-- ob-eth -->
 	<distribution name="ob_rx_default_dist">
-		<queue count="1" base="0x61"/>
+		<queue count="1" base="0x10e2"/>
 	</distribution>
 
 	<distribution name="ob_rx_dist">
@@ -69,7 +69,7 @@
 
 <!-- ib-oh-post -->
 	<distribution name="ib_oh_post_default_dist">
-		<queue count="1" base="0x65"/>
+		<queue count="1" base="0x10e4"/>
 	</distribution>
 
 	<distribution name="ib_oh_post_dist">
@@ -88,7 +88,7 @@
 
 <!-- ob-oh-pre -->
 	<distribution name="ob_oh_pre_default_dist">
-		<queue count="1" base="0x69"/>
+		<queue count="1" base="0x10e6"/>
 	</distribution>
 
 	<policy name="ob_oh_pre_policy">
@@ -100,7 +100,7 @@
 
 <!-- ob-oh-post -->
 	<distribution name="ob_oh_post_default_dist">
-		<queue count="1" base="0x71"/>
+		<queue count="1" base="0x10e8"/>
 	</distribution>
 
 	<policy name="ob_oh_post_policy">

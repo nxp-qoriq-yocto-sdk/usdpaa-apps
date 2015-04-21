@@ -47,6 +47,9 @@
 #define IF_BPID			16
 #define DMA_MEM_IF_SIZE		1728
 #define DMA_MEM_IF_NUM		0x4000
+/* IP fragmentation scratch buffer pool */
+#define DMA_MEM_IPF_SIZE	1600
+#define DMA_MEM_IPF_NUM		0x0
 
 enum ether_types {
 	ETHER_TYPE_IPv4 = 0,

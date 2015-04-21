@@ -169,6 +169,17 @@ static int ip6_route_tables			= 0;
 static struct cc_info *ip6_rule_cc_info		= NULL;
 static int ip6_rule_tables			= 0;
 
+//TODO: read buffer pools from DTS!
+static struct bpool {
+	u32 bpid;
+	unsigned int num;
+	unsigned int size;
+} bpool[] = {
+	{ 0,		DMA_MEM_IPF_NUM,	DMA_MEM_IPF_SIZE },
+	{ IF_BPID,	DMA_MEM_IF_NUM,		DMA_MEM_IF_SIZE },
+	{ 0,		0,			0 }
+};
+
 unsigned int ib_ifid;
 
 /*
@@ -1076,22 +1087,27 @@ static int create_fq_outbound_bypass(uint16_t channel, uint32_t *nf_ipsec_fq_id)
 
 static void teardown_fq(struct qman_fq *fq)
 {
+	int ret = 0;
 	u32 flags;
-	int s = qman_retire_fq(fq, &flags);
-	if (s == 1) {
+	enum qman_fq_state state;
+
+	qman_fq_state(fq, &state, &flags);
+	if ((state == qman_fq_state_parked) ||
+					(state == qman_fq_state_sched))
+		ret = qman_retire_fq(fq, &flags);
+
+	if (ret == 1) {
 		/* Retire is non-blocking, poll for completion */
-		enum qman_fq_state state;
 		do {
 			qman_poll();
 			qman_fq_state(fq, &state, &flags);
 		} while (state != qman_fq_state_retired);
 		if (flags & QMAN_FQ_STATE_NE) {
 			/* FQ isn't empty, drain it */
-			s = qman_volatile_dequeue(fq, 0,
+			ret = qman_volatile_dequeue(fq, 0,
 				QM_VDQCR_NUMFRAMES_TILLEMPTY);
-			if (s) {
-				fprintf(stderr, "Fail: %s: %d\n",
-					"qman_volatile_dequeue()", s);
+			if (ret) {
+				error(0, -ret, "qman_volatile_dequeue()");
 				return;
 			}
 			/* Poll for completion */
@@ -1100,14 +1116,24 @@ static void teardown_fq(struct qman_fq *fq)
 				qman_fq_state(fq, &state, &flags);
 			} while (flags & QMAN_FQ_STATE_VDQCR);
 		}
+	} else if (ret) {
+		error(0, -ret, "Failed to qman_retire_fq 0x%x", fq->fqid);
+		return;
 	}
-	s = qman_oos_fq(fq);
+
+	ret = 0;
+	qman_fq_state(fq, &state, &flags);
+	if (state == qman_fq_state_retired)
+		ret = qman_oos_fq(fq);
+	if (ret) {
+		error(0, -ret, "Failed to qman_oos_fq 0x%x", fq->fqid);
+		return;
+	}
+
 	if (!(fq->flags & QMAN_FQ_FLAG_DYNAMIC_FQID))
 		qman_release_fqid(fq->fqid);
-	if (s)
-		fprintf(stderr, "Fail: %s: %d\n", "qman_oos_fq()", s);
-	else
-		qman_destroy_fq(fq, 0);
+
+	qman_destroy_fq(fq, 0);
 }
 
 int nf_ipsec_init(void)
@@ -1181,6 +1207,47 @@ void nf_ipsec_cleanup(void)
 	/* TODO: remove port queues */
 }
 
+void nf_ipfwd_cleanup(void)
+{
+	int i, td;
+
+	free(ip4_rule_cc_info);
+	ip4_rule_cc_info = NULL;
+	free(ip4_route_cc_info);
+	ip4_route_cc_info = NULL;
+	free(ip6_rule_cc_info);
+	ip6_rule_cc_info = NULL;
+	free(ip6_route_cc_info);
+	ip6_route_cc_info = NULL;
+
+	/* Release IP forwarding rule and route tables: */
+	for (i = 0; i < ip4_rule_tables; i++) {
+		td = init.nfapi_init_data.ipfwd.ip4_rule_nf_res->nf_cc[i].td;
+		dpa_classif_table_free(td);
+	}
+	free(init.nfapi_init_data.ipfwd.ip4_rule_nf_res);
+	for (i = 0; i < ip6_rule_tables; i++) {
+		td = init.nfapi_init_data.ipfwd.ip6_rule_nf_res->nf_cc[i].td;
+		dpa_classif_table_free(td);
+	}
+	free(init.nfapi_init_data.ipfwd.ip6_rule_nf_res);
+	for (i = 0; i < ip4_route_tables; i++) {
+		td = init.nfapi_init_data.ipfwd.ip4_route_nf_res->nf_cc[i].td;
+		dpa_classif_table_free(td);
+	}
+	free(init.nfapi_init_data.ipfwd.ip4_route_nf_res);
+	for (i = 0; i < ip6_route_tables; i++) {
+		td = init.nfapi_init_data.ipfwd.ip6_route_nf_res->nf_cc[i].td;
+		dpa_classif_table_free(td);
+	}
+	free(init.nfapi_init_data.ipfwd.ip6_route_nf_res);
+
+	ip4_rule_tables = 0;
+	ip4_route_tables = 0;
+	ip6_rule_tables = 0;
+	ip6_route_tables = 0;
+}
+
 static void net_if_finish(struct net_if *interface)
 {
 	const struct fman_if *fif = interface->cfg->fman_if;
@@ -1190,51 +1257,50 @@ static void net_if_finish(struct net_if *interface)
 	/* Disable Rx */
 	fman_if_disable_rx(fif);
 
-	/* Cleanup Rx FQs */
+	/* Cleanup PCD Rx FQs */
 	list_for_each_entry(rx_fqrange, &interface->rx_list, list)
 		for (loop = 0; loop < rx_fqrange->rx_count; loop++)
 			teardown_fq(&rx_fqrange->rx[loop].fq);
 
-#if 0
-	/* Cleanup admin FQs */
-	if (net_if_admin_is_used(interface, ADMIN_FQ_RX_ERROR))
-		teardown_fq(&interface->admin[ADMIN_FQ_RX_ERROR].fq);
-	if (net_if_admin_is_used(interface, ADMIN_FQ_RX_DEFAULT))
-		teardown_fq(&interface->admin[ADMIN_FQ_RX_DEFAULT].fq);
-	if (net_if_admin_is_used(interface, ADMIN_FQ_TX_ERROR))
-		teardown_fq(&interface->admin[ADMIN_FQ_TX_ERROR].fq);
-	if (net_if_admin_is_used(interface, ADMIN_FQ_TX_CONFIRM))
-		teardown_fq(&interface->admin[ADMIN_FQ_TX_CONFIRM].fq);
+	/* For offline ports we need to tear down port Rx frame queues: */
+	if (fif->mac_type == fman_offline) {
+		teardown_fq(&interface->rx_default[0]);
+		teardown_fq(&interface->rx_error);
+	}
 
 	/* Cleanup Tx FQs */
 	for (loop = 0; loop < interface->num_tx_fqs; loop++)
 		teardown_fq(&interface->tx_fqs[loop]);
-#endif
 }
 
 static void cleanup_buffer_pools(void)
 {
+	const struct bpool *bp = bpool;
+
+	while (bp->size != 0) {
+		bman_release_bpid(bp->bpid);
+		bman_free_pool(init.pool[bp->bpid]);
+		bp++;
+	}
+
 	dma_mem_destroy(dma_mem_generic);
-	bman_release_bpid(init.nfapi_init_data.ipsec.ipf_bpid);
 }
 
 static void do_library_finish(void)
 {
 	struct list_head *i;
 
+	if (init.is_ipsec)
+		nf_ipsec_cleanup();
+	if (init.is_ipfwd)
+		nf_ipfwd_cleanup();
+
+	fmc_clean(init.model);
+
 	/* Tear down the network interfaces */
 	list_for_each(i, &init.nfapi_init_data.ifs)
 		net_if_finish((struct net_if *)i);
 
-	if (init.is_ipsec)
-		nf_ipsec_cleanup();
-	/*
-	 * TODO: add ipfwd cleanup
-	 * if (init.is_ipfwd)
-	 *	;
-	 */
-
-	fmc_clean(init.model);
 	cleanup_buffer_pools();
 }
 
@@ -1592,7 +1658,6 @@ static u16 get_next_rx_channel(void)
 	return ret;
 }
 
-
 static int net_if_rx_init(struct net_if * i)
 {
 	__maybe_unused int err;
@@ -1604,6 +1669,9 @@ static int net_if_rx_init(struct net_if * i)
 	INIT_LIST_HEAD(&i->rx_list);
 
 	stash_opts = default_stash_opts;
+
+	i->rx_default = malloc(sizeof(struct qman_fq));
+	memset(i->rx_default, 0, sizeof(struct qman_fq));
 
 	if (fif->mac_type == fman_mac_less) {
 		uint32_t fqid = fif->macless_info.tx_start;
@@ -1621,8 +1689,6 @@ static int net_if_rx_init(struct net_if * i)
 		usdpaa_netcfg_enable_disable_shared_rx(i->cfg->fman_if, true);
 		return 0;
 	}
-
-	i->rx_default = malloc(sizeof(struct qman_fq));
 
 	if (fif->mac_type == fman_onic) {
 		uint32_t fqid = fif->fqid_rx_def;
@@ -1656,8 +1722,7 @@ static int net_if_rx_init(struct net_if * i)
 					qman_fq_fqid(&i->rx_default[0]));
 		}
 
-	}
-	else {
+	} else {
 		net_if_admin_fq_init(&i->rx_error, fif->fqid_rx_err,
 				get_next_rx_channel(), &stash_opts,
 				cb_dqrr_rx_error);
@@ -1666,7 +1731,6 @@ static int net_if_rx_init(struct net_if * i)
 				get_next_rx_channel(), &stash_opts,
 				cb_dqrr_rx_default);
 	}
-
 
 	list_for_each_entry(fqr, i->cfg->list, list) {
 		uint32_t fqid = fqr->start;
@@ -1857,41 +1921,25 @@ static int net_if_init(unsigned idx)
 		net_if_tx_fq_init(fq, fif);
 	}
 
+	list_add_tail(&i->node, &init.nfapi_init_data.ifs);
+
 	/* Offline ports don't have Tx Error or Tx Confirm FQs */
-	if (fif->mac_type == fman_offline || fif->mac_type == fman_onic) {
-		list_add_tail(&i->node, &init.nfapi_init_data.ifs);
+	if (fif->mac_type == fman_offline || fif->mac_type == fman_onic)
 		return 0;
-	}
 
 	/* For shared MAC, Tx Error and Tx Confirm FQs are created by linux */
 	if (fif->shared_mac_info.is_shared_mac != 1) {
 		stash_opts = default_stash_opts;
 		net_if_admin_fq_init(&i->tx_error, fif->fqid_tx_err,
-				get_next_rx_channel(), &stash_opts, cb_dqrr_tx_error);
+			get_next_rx_channel(), &stash_opts, cb_dqrr_tx_error);
 
 		stash_opts = default_stash_opts;
 		net_if_admin_fq_init(&i->tx_confirm, fif->fqid_tx_confirm,
-				get_next_rx_channel(), &stash_opts, cb_dqrr_tx_confirm);
+			get_next_rx_channel(), &stash_opts, cb_dqrr_tx_confirm);
 
 	}
-	list_add_tail(&i->node, &init.nfapi_init_data.ifs);
 	return 0;
 }
-
-//TODO: read buffer pools from DTS!
-/* IP fragmentation scratch buffer pool
- * move those to header if not patched from dts */
-#define DMA_MEM_IPF_SIZE	1600
-#define DMA_MEM_IPF_NUM		0x0
-static struct bpool {
-	int bpid;
-	unsigned int num;
-	unsigned int size;
-} bpool[] = {
-	{ -1,		DMA_MEM_IPF_NUM,	DMA_MEM_IPF_SIZE },
-	{ IF_BPID,	DMA_MEM_IF_NUM,		DMA_MEM_IF_SIZE },
-	{ -1,		0,			0 }
-};
 
 static int prepare_bpid(u8 bpid, unsigned int count, uint64_t sz,
 		      unsigned int align,
@@ -1910,15 +1958,13 @@ static int prepare_bpid(u8 bpid, unsigned int count, uint64_t sz,
 	int ret = 0;
 
 	if (init.pool[bpid])
-		/* this BPID is already handled */
+		/* this BPID is already initialized */
 		return 0;
 	init.pool[bpid] = bman_new_pool(&params);
 	if (!init.pool[bpid]) {
 		fprintf(stderr, "error: bman_new_pool(%d) failed\n", bpid);
 		return -ENOMEM;
 	}
-	ret = bman_reserve_bpid(bpid);
-	BUG_ON(ret);
 
 	/* Drain the pool of anything already in it. */
 	if (to_drain)
@@ -1965,20 +2011,19 @@ static int prepare_bpid(u8 bpid, unsigned int count, uint64_t sz,
 static int init_buffer_pools(void)
 {
 	int ret;
-	const struct bpool *bp = bpool;
-	uint32_t * ipf_bpid = &init.nfapi_init_data.ipsec.ipf_bpid;
+	struct bpool *bp = bpool;
 
-	ret = bman_alloc_bpid(ipf_bpid);
-	if (ret < 0) {
-		fprintf(stderr, "Cannot allocate bpid for ipf bpool\n");
-		return ret;
-	}
-	bpool[0].bpid = *ipf_bpid;
-
-	while (bp->bpid != -1) {
+	while (bp->size != 0) {
+		if (bp->bpid)
+			ret = bman_reserve_bpid(bp->bpid);
+		else {
+			ret = bman_alloc_bpid(&bp->bpid);
+			init.nfapi_init_data.ipsec.ipf_bpid = bp->bpid;
+		}
+		BUG_ON(ret);
 		ret = prepare_bpid(bp->bpid, bp->num, bp->size, 256,
-				           (uint32_t)(bp->bpid) == *ipf_bpid ? 0 : 1,
-					       NULL, NULL);
+			(bp->bpid == init.nfapi_init_data.ipsec.ipf_bpid) ? 0 : 1,
+			NULL, NULL);
 		if (ret) {
 			fprintf(stderr, "error: bpool (%d) init failure\n",
 				bp->bpid);
