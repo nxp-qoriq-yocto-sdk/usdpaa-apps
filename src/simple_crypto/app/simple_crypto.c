@@ -663,6 +663,7 @@ void set_enc_buf(void *params, struct qm_fd fd[])
 		sgentry = __dma_mem_ptov(addr);
 
 		sgentry++;
+		hw_sg_to_cpu(sgentry);
 		addr = qm_sg_entry_get64(sgentry);
 		in_buf = __dma_mem_ptov(addr);
 
@@ -685,12 +686,15 @@ void set_enc_buf(void *params, struct qm_fd fd[])
 			 *  from the decryption phase. The output len for
 			 *  encrypt is different than for decrypt.
 			 */
+			cpu_to_hw_sg(sgentry);
 			sgentry--;
+			hw_sg_to_cpu(sgentry);
 			sgentry->length = crypto_info.rt.output_buf_size;
 
 			memcpy(in_buf, snow_jdesc_enc_f8_f9,
 			       crypto_info.rt.job_desc_buf_size);
 			in_buf += crypto_info.rt.job_desc_buf_size;
+			cpu_to_hw_sg(sgentry);
 		}
 		/* Copy the input plain-text data */
 		for (i = 0; i < crypto_info.buf_size; i++) {
@@ -700,6 +704,7 @@ void set_enc_buf(void *params, struct qm_fd fd[])
 			else
 				in_buf[i] = plain_data++;
 		}
+		cpu_to_hw_sg(sgentry);
 	}
 }
 
@@ -726,6 +731,9 @@ void set_dec_buf(void *params, struct qm_fd fd[])
 		sg_out = __dma_mem_ptov(addr);
 		sg_in = sg_out + 1;
 
+		hw_sg_to_cpu(sg_out);
+		hw_sg_to_cpu(sg_in);
+
 		addr = qm_sg_addr(sg_out);
 		length = sg_out->length;
 		offset = sg_out->offset;
@@ -740,6 +748,9 @@ void set_dec_buf(void *params, struct qm_fd fd[])
 		sg_in->length = length;
 		sg_in->offset = offset;
 		sg_in->bpid = bpid;
+
+		cpu_to_hw_sg(sg_in);
+		cpu_to_hw_sg(sg_out);
 	}
 }
 
@@ -1149,8 +1160,12 @@ int test_enc_match(void *params, struct qm_fd fd[])
 		addr = qm_fd_addr_get64(&fd[ind]);
 		sgentry = __dma_mem_ptov(addr);
 
+		hw_sg_to_cpu(sgentry);
+
 		addr = qm_sg_entry_get64(sgentry);
 		enc_buf = __dma_mem_ptov(addr);
+
+		cpu_to_hw_sg(sgentry);
 
 		if (test_vector_match((uint32_t *) enc_buf,
 				      authnct ? (uint32_t *)
@@ -1202,8 +1217,12 @@ int test_dec_match(void *params, struct qm_fd fd[])
 		addr = qm_fd_addr_get64(&fd[ind]);
 		sgentry = __dma_mem_ptov(addr);
 
+		hw_sg_to_cpu(sgentry);
+
 		addr = qm_sg_entry_get64(sgentry);
 		dec_buf = __dma_mem_ptov(addr);
+
+		cpu_to_hw_sg(sgentry);
 		if (CIPHER == crypto_info.mode) {
 			if (test_vector_match((uint32_t *) dec_buf, (uint32_t *)
 					      ref_test_vector.plaintext,

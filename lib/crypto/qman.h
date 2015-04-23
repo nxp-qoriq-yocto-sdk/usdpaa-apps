@@ -112,4 +112,16 @@ void free_fd(unsigned int buf_num);
 /* Debug routines */
 void print_frame_desc(struct qm_fd *frame_desc);
 
+static inline void cpu_to_hw_sg(struct qm_sg_entry *sgentry)
+{
+	sgentry->addr = cpu_to_be40(sgentry->addr);
+	sgentry->val = cpu_to_be32(sgentry->val);
+}
+
+static inline void hw_sg_to_cpu(struct qm_sg_entry *sgentry)
+{
+	sgentry->addr = be40_to_cpu(sgentry->addr);
+	sgentry->val = be32_to_cpu(sgentry->val);
+}
+
 #endif /* __CRYPTO_QBMAN_H */

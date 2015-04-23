@@ -123,6 +123,9 @@ int create_compound_fd(unsigned buf_num, struct compound_fd_params *fd_params)
 		fd[ind].cong_weight = 2 * sizeof(struct qm_sg_entry);
 
 		sg_priv_and_data->index = ind;
+
+		cpu_to_hw_sg(sg);
+		cpu_to_hw_sg(++sg);
 	}
 	return 0;
 }
@@ -654,6 +657,8 @@ void print_frame_desc(struct qm_fd *frame_desc)
 			addr = qm_fd_addr_get64(frame_desc);
 			sgentry = __dma_mem_ptov(addr);
 
+			hw_sg_to_cpu(sgentry);
+
 			fprintf(stdout, "error: - compound FD S/G list at 0x%"
 				PRIx64 "\n", addr);
 			addr = qm_sg_entry_get64(sgentry);
@@ -676,6 +681,7 @@ void print_frame_desc(struct qm_fd *frame_desc)
 				fprintf(stdout, "error: 0x%x\n", *v++);
 
 			sgentry++;
+			hw_sg_to_cpu(sgentry);
 			addr = qm_sg_entry_get64(sgentry);
 			fprintf(stdout, "error:    - Next SG Entry\n");
 			fprintf(stdout, "error:       - address	0x%"
