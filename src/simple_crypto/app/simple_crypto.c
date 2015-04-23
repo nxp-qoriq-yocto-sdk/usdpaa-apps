@@ -633,7 +633,7 @@ static void *setup_init_descriptor(bool mode, struct test_param crypto_info)
 	}
 
 	prehdr_desc->prehdr.hi.field.idlen = shared_desc_len;
-
+	prehdr_desc->prehdr.hi.word = cpu_to_be32(prehdr_desc->prehdr.hi.word);
 	pr_debug("SEC4.0 %s shared descriptor:\n", algorithm);
 
 	for (i = 0; i < shared_desc_len; i++)
@@ -687,6 +687,7 @@ void set_enc_buf(void *params, struct qm_fd fd[])
 			 *  encrypt is different than for decrypt.
 			 */
 			cpu_to_hw_sg(sgentry);
+
 			sgentry--;
 			hw_sg_to_cpu(sgentry);
 			sgentry->length = crypto_info.rt.output_buf_size;
