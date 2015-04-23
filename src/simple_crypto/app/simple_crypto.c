@@ -49,6 +49,12 @@ enum rta_sec_era rta_sec_era;
 int user_sec_era = -1;
 int hw_sec_era = -1;
 
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define SWAP_DESCRIPTOR		true
+#else
+#define SWAP_DESCRIPTOR		false
+#endif
+
 /*
  * brief	Initialises the reference test vector for aes-cbc
  * details	Initializes key, length and other variables for the algorithm
@@ -455,6 +461,9 @@ void *setup_sec_descriptor(bool mode, void *params)
 {
 	struct test_param crypto_info = *((struct test_param *)params);
 	void *descriptor = NULL;
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+	int i;
+#endif
 
 	if (SNOW_F8_F9 == crypto_info.algo) {
 		descriptor = setup_preheader(
@@ -467,6 +476,17 @@ void *setup_sec_descriptor(bool mode, void *params)
 				       compound frame */
 				 0); /* add_buf = 0 */
 
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+		for (i = 0; i < ARRAY_SIZE(snow_jdesc_enc_f8_f9); i++) {
+			snow_jdesc_enc_f8_f9[i] =
+				cpu_to_be32(snow_jdesc_enc_f8_f9[i]);
+		}
+
+		for (i = 0; i < ARRAY_SIZE(snow_jdesc_dec_f8_f9); i++) {
+			snow_jdesc_dec_f8_f9[i] =
+				cpu_to_be32(snow_jdesc_dec_f8_f9[i]);
+		}
+#endif
 	} else {
 		descriptor = setup_init_descriptor(mode, crypto_info);
 	}
@@ -509,10 +529,11 @@ static void *setup_init_descriptor(bool mode, struct test_param crypto_info)
 		alginfo.key_enc_flags = 0;
 		alginfo.key_type = RTA_DATA_IMM;
 		shared_desc_len = cnstr_shdsc_blkcipher(shared_desc, ps,
-					  &alginfo,
-					  ref_test_vector.iv.init_vec,
-					  AES_CBC_IV_LEN,
-					  mode ? DIR_ENC : DIR_DEC);
+						SWAP_DESCRIPTOR,
+						&alginfo,
+						ref_test_vector.iv.init_vec,
+						AES_CBC_IV_LEN,
+						mode ? DIR_ENC : DIR_DEC);
 		break;
 
 	case TDES_CBC:
@@ -523,10 +544,11 @@ static void *setup_init_descriptor(bool mode, struct test_param crypto_info)
 		alginfo.key_enc_flags = 0;
 		alginfo.key_type = RTA_DATA_IMM;
 		shared_desc_len = cnstr_shdsc_blkcipher(shared_desc, ps,
-					  &alginfo,
-					  ref_test_vector.iv.init_vec,
-					  TDES_CBC_IV_LEN,
-					  mode ? DIR_ENC : DIR_DEC);
+						SWAP_DESCRIPTOR,
+						&alginfo,
+						ref_test_vector.iv.init_vec,
+						TDES_CBC_IV_LEN,
+						mode ? DIR_ENC : DIR_DEC);
 		break;
 
 	case SNOW_F8:
@@ -535,11 +557,12 @@ static void *setup_init_descriptor(bool mode, struct test_param crypto_info)
 		alginfo.key_enc_flags = 0;
 		alginfo.key_type = RTA_DATA_IMM;
 		shared_desc_len = cnstr_shdsc_snow_f8(shared_desc, ps,
-				    &alginfo,
-				    mode ? DIR_ENC : DIR_DEC,
-				    ref_test_vector.iv.f8.count,
-				    ref_test_vector.iv.f8.bearer,
-				    ref_test_vector.iv.f8.direction);
+					SWAP_DESCRIPTOR,
+					&alginfo,
+					mode ? DIR_ENC : DIR_DEC,
+					ref_test_vector.iv.f8.count,
+					ref_test_vector.iv.f8.bearer,
+					ref_test_vector.iv.f8.direction);
 		break;
 
 	case SNOW_F9:
@@ -559,10 +582,13 @@ static void *setup_init_descriptor(bool mode, struct test_param crypto_info)
 		alginfo.key_enc_flags = 0;
 		alginfo.key_type = RTA_DATA_IMM;
 		shared_desc_len = cnstr_shdsc_snow_f9(shared_desc, ps,
-				    &alginfo,
-				    DIR_ENC, ref_test_vector.iv.f9.count,
-				    ref_test_vector.iv.f9.fresh,
-				    ref_test_vector.iv.f9.direction, length);
+						SWAP_DESCRIPTOR,
+						&alginfo,
+						DIR_ENC,
+						ref_test_vector.iv.f9.count,
+						ref_test_vector.iv.f9.fresh,
+						ref_test_vector.iv.f9.direction,
+						length);
 		break;
 
 	case KASUMI_F8:
@@ -571,11 +597,12 @@ static void *setup_init_descriptor(bool mode, struct test_param crypto_info)
 		alginfo.key_enc_flags = 0;
 		alginfo.key_type = RTA_DATA_IMM;
 		shared_desc_len = cnstr_shdsc_kasumi_f8(shared_desc, ps,
-				      &alginfo,
-				      mode ? DIR_ENC : DIR_DEC,
-				      ref_test_vector.iv.f8.count,
-				      ref_test_vector.iv.f8.bearer,
-				      ref_test_vector.iv.f8.direction);
+					SWAP_DESCRIPTOR,
+					&alginfo,
+					mode ? DIR_ENC : DIR_DEC,
+					ref_test_vector.iv.f8.count,
+					ref_test_vector.iv.f8.bearer,
+					ref_test_vector.iv.f8.direction);
 		break;
 
 	case KASUMI_F9:
@@ -595,10 +622,13 @@ static void *setup_init_descriptor(bool mode, struct test_param crypto_info)
 		alginfo.key_enc_flags = 0;
 		alginfo.key_type = RTA_DATA_IMM;
 		shared_desc_len = cnstr_shdsc_kasumi_f9(shared_desc, ps,
-				      &alginfo,
-				      DIR_ENC, ref_test_vector.iv.f9.count,
-				      ref_test_vector.iv.f9.fresh,
-				      ref_test_vector.iv.f9.direction, length);
+						SWAP_DESCRIPTOR,
+						&alginfo,
+						DIR_ENC,
+						ref_test_vector.iv.f9.count,
+						ref_test_vector.iv.f9.fresh,
+						ref_test_vector.iv.f9.direction,
+						length);
 		break;
 
 	case CRC:
@@ -607,8 +637,7 @@ static void *setup_init_descriptor(bool mode, struct test_param crypto_info)
 				" protect\n", __func__);
 			return NULL;
 		}
-
-		shared_desc_len = cnstr_shdsc_crc(shared_desc);
+		shared_desc_len = cnstr_shdsc_crc(shared_desc, SWAP_DESCRIPTOR);
 		break;
 
 	case HMAC_SHA1:
@@ -622,8 +651,9 @@ static void *setup_init_descriptor(bool mode, struct test_param crypto_info)
 		alginfo.key = ref_test_vector.key;
 		alginfo.key_enc_flags = 0;
 		alginfo.key_type = RTA_DATA_IMM;
-		shared_desc_len = cnstr_shdsc_hmac(shared_desc, ps, &alginfo, 0,
-						   0);
+		shared_desc_len = cnstr_shdsc_hmac(shared_desc, ps,
+						   SWAP_DESCRIPTOR,
+						   &alginfo, 0, 0);
 		break;
 
 	default:
@@ -784,6 +814,9 @@ void set_dec_auth_buf(void *params, struct qm_fd fd[])
 
 		sg_in = sg_out + 1;
 
+		hw_sg_to_cpu(sg_out);
+		hw_sg_to_cpu(sg_in);
+
 		addr = qm_sg_entry_get64(sg_in);
 		in_buf = __dma_mem_ptov(addr);
 		memset(in_buf, 0, crypto_info.rt.input_buf_capacity);
@@ -819,6 +852,10 @@ void set_dec_auth_buf(void *params, struct qm_fd fd[])
 
 		/* The output buffer will contain only the decoded F8 data */
 		sg_out->length = crypto_info.buf_size;
+
+		cpu_to_hw_sg(sg_out);
+		cpu_to_hw_sg(sg_in);
+
 	}
 }
 
