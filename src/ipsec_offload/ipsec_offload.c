@@ -491,6 +491,8 @@ static int ppam_interface_init(struct ppam_interface *p,
 		container_of(p, struct ppac_interface, ppam_data);
 	struct qman_fq *fq = &i->tx_fqs[0];
 
+	TRACE("Initializing mac%u@fm%d of type:%d\n", cfg->fman_if->mac_idx,
+		cfg->fman_if->fman_idx, cfg->fman_if->mac_type);
 	if (app_conf.ob_oh_post == i->port_cfg->fman_if) {
 		fq->fqid = OB_OH_POST_TX_FQID;
 		*flags |= PPAM_TX_FQ_NO_BUF_DEALLOC;
@@ -1314,6 +1316,238 @@ static error_t parse_opts(int key, char *arg, struct argp_state *state)
 	return 0;
 }
 
+#ifdef ENABLE_TRACE
+static int dump_match_table_miss_stats(const t_Handle *ccnode, unsigned num)
+{
+	t_Error err;
+	unsigned i;
+	t_FmPcdCcKeyStatistics stats;
+	int ret = 0;
+
+	for (i = 0; i < num; i++)
+	{
+		if (!ccnode[i]) {
+			printf("o %d) --- not initialized ---\n", i);
+			continue;
+		}
+
+		printf("o %d) ccnode=0x%x\n", i, (unsigned)ccnode[i]);
+
+		err = FM_PCD_MatchTableGetMissStatistics(
+				ccnode[i],
+				&stats);
+		if (err != E_OK) {
+			printf("\t- Miss : FAILED TO GET STATS\n");
+			ret = -EINVAL;
+		}
+
+		printf("\t- Miss : %u frames\n", stats.frameCount);
+	}
+
+	return ret;
+}
+
+static int dump_hash_table_miss_stats(const t_Handle *ccnode, unsigned num)
+{
+	t_Error err;
+	unsigned i;
+	t_FmPcdCcKeyStatistics stats;
+	int ret = 0;
+
+	for (i = 0; i < num; i++)
+	{
+		if (!ccnode[i]) {
+			printf("o %d) --- not initialized ---\n", i);
+			continue;
+		}
+
+		printf("o %d) ccnode=0x%x\n", i, (unsigned)ccnode[i]);
+
+		err = FM_PCD_HashTableGetMissStatistics(
+				ccnode[i],
+				&stats);
+		if (err != E_OK) {
+			printf("\t- Miss : FAILED TO GET STATS\n");
+			ret = -EINVAL;
+		}
+
+		printf("\t- Miss : %u frames\n", stats.frameCount);
+	}
+
+	return ret;
+}
+
+static int dump_match_table_entry_stats(t_Handle ccnode, int entry_idx)
+{
+	t_Error err;
+	t_FmPcdCcKeyStatistics stats;
+
+	err = FM_PCD_MatchTableGetKeyStatistics(
+		ccnode,
+		entry_idx,
+		&stats);
+	if (err != E_OK) {
+		printf("\t- entry #%d : FAILED TO GET STATS\n", entry_idx);
+		return -EINVAL;
+	}
+
+	printf("\t- entry #%d : %u frames\n", entry_idx, stats.frameCount);
+
+	return 0;
+}
+
+int debug_ob_policy_miss_stats(int argc, char *argv[])
+{
+	int ret = 0;
+
+	printf("Dumping OUTBOUND (pre-SEC) policy table MISS statistics:\n");
+	ret = dump_match_table_miss_stats(cc_out_pre_enc,
+					DPA_IPSEC_MAX_SUPPORTED_PROTOS);
+	printf("\n");
+
+	return ret;
+}
+
+int debug_ob_policy_stats(int argc, char *argv[])
+{
+	int table_idx;
+	int entry_idx;
+	int ret;
+
+	if (argc < 3) {
+		printf("\nSyntax: %s <table_idx> <entry_idx>\n\n", __func__);
+		return -EINVAL;
+	}
+
+	table_idx = atoi(argv[1]);
+	entry_idx = atoi(argv[2]);
+
+	if ((table_idx < 0) || (table_idx >= DPA_IPSEC_MAX_SUPPORTED_PROTOS)) {
+		printf("OUTBOUND (pre-SEC) policy table #%d is out of range. Only indexes in the range 0-%d are available.\n\n",
+			table_idx, DPA_IPSEC_MAX_SUPPORTED_PROTOS - 1);
+		return -EINVAL;
+	}
+
+	if (!cc_out_pre_enc[table_idx]) {
+		printf("OUTBOUND (pre-SEC) policy table #%d:\n", table_idx);
+		printf("\t--- table not initialized ---\n\n");
+		return -ENXIO;
+	}
+
+	printf("OUTBOUND (pre-SEC) policy table #%d (ccnode=0x%x):\n",
+		table_idx, (unsigned)cc_out_pre_enc[table_idx]);
+
+	ret = dump_match_table_entry_stats(cc_out_pre_enc[table_idx],
+					entry_idx);
+	printf("\n");
+
+	return ret;
+}
+
+int debug_ob_route_miss_stats(int argc, char *argv[])
+{
+	int ret = 0;
+
+	printf("Dumping OUTBOUND (post-SEC) route MISS statistics:\n\t(ETHER_TYPE_IPv4=%d, ETHER_TYPE_IPv6=%d)\n",
+		ETHER_TYPE_IPv4, ETHER_TYPE_IPv6);
+	ret = dump_match_table_miss_stats(cc_out_post_enc, MAX_ETHER_TYPES);
+	printf("\n");
+
+	return ret;
+}
+
+int debug_ob_route_stats(int argc, char *argv[])
+{
+	int table_idx;
+	int entry_idx;
+	int ret;
+
+	if (argc < 3) {
+		printf("\nSyntax: %s <ob_route_table_idx> <route_entry_idx>\n\n", __func__);
+		printf("Note: ob_route_table_idx should be in the range 0 - %d.\n",
+			MAX_ETHER_TYPES - 1);
+		printf("\tETHER_TYPE_IPv4=%d, ETHER_TYPE_IPv6=%d\n",
+			ETHER_TYPE_IPv4, ETHER_TYPE_IPv6);
+		return -EINVAL;
+	}
+
+	table_idx = atoi(argv[1]);
+	entry_idx = atoi(argv[2]);
+
+	if ((table_idx < 0) || (table_idx >= MAX_ETHER_TYPES)) {
+		printf("OUTBOUND (post-SEC) route table #%d is out of range. Only indexes in the range 0-%d are available.\n\n",
+			table_idx, MAX_ETHER_TYPES - 1);
+		return -EINVAL;
+	}
+
+	printf("OUTBOUND (post-SEC) route table #%d (ccnode=0x%x):\n",
+		table_idx, (unsigned)cc_out_post_enc[table_idx]);
+
+	ret = dump_match_table_entry_stats(cc_out_post_enc[table_idx],
+					entry_idx);
+	printf("\n");
+
+	return ret;
+}
+
+int debug_ib_policy_miss_stats(int argc, char *argv[])
+{
+	int ret = 0;
+
+	printf("Dumping INBOUND (pre-SEC) policy table MISS statistics:\n");
+	ret = dump_hash_table_miss_stats(cc_in_rx,
+					DPA_IPSEC_MAX_SA_TYPE);
+	printf("\n");
+
+	return ret;
+}
+
+int debug_ib_route_miss_stats(int argc, char *argv[])
+{
+	int ret = 0;
+
+	printf("Dumping INBOUND (post-SEC) route MISS statistics:\n\t(ETHER_TYPE_IPv4=%d, ETHER_TYPE_IPv6=%d)\n",
+		ETHER_TYPE_IPv4, ETHER_TYPE_IPv6);
+	ret = dump_match_table_miss_stats(cc_in_post_dec, MAX_ETHER_TYPES);
+	printf("\n");
+
+	return ret;
+}
+
+int debug_ib_route_stats(int argc, char *argv[])
+{
+	int table_idx;
+	int entry_idx;
+	int ret;
+
+	if (argc < 3) {
+		printf("\nSyntax: %s <ib_route_table_idx> <route_entry_idx>\n\n", __func__);
+		printf("Note: ib_route_table_idx should be in the range 0 - %d.\n",
+			MAX_ETHER_TYPES - 1);
+		printf("\tETHER_TYPE_IPv4=%d, ETHER_TYPE_IPv6=%d\n",
+			ETHER_TYPE_IPv4, ETHER_TYPE_IPv6);
+		return -EINVAL;
+	}
+
+	table_idx = atoi(argv[1]);
+	entry_idx = atoi(argv[2]);
+
+	if ((table_idx < 0) || (table_idx >= MAX_ETHER_TYPES)) {
+		printf("INBOUND (post-SEC) route table #%d is out of range. Only indexes in the range 0-%d are available.\n\n",
+			table_idx, MAX_ETHER_TYPES - 1);
+		return -EINVAL;
+	}
+
+	printf("INBOUND (post-SEC) route table #%d (ccnode=0x%x):\n",
+		table_idx, (unsigned)cc_in_post_dec[table_idx]);
+
+	ret = dump_match_table_entry_stats(cc_in_post_dec[table_idx],
+					entry_idx);
+	printf("\n");
+
+	return ret;
+}
+#endif /* ENABLE_TRACE */
 
 const struct argp ppam_argp = {argp_opts, parse_opts, 0, ppam_doc};
 
@@ -1322,6 +1556,15 @@ cli_cmd(eth_stats, show_eth_stats);
 cli_cmd(ib_reass_stats, show_ib_reass_stats);
 cli_cmd(ipsec_stats, show_ipsec_stats);
 cli_cmd(list_sa, list_dpa_sa);
+#ifdef ENABLE_TRACE
+cli_cmd(debug_ob_policy_miss_stats, debug_ob_policy_miss_stats);
+cli_cmd(debug_ob_policy_stats, debug_ob_policy_stats);
+cli_cmd(debug_ob_route_miss_stats, debug_ob_route_miss_stats);
+cli_cmd(debug_ob_route_stats, debug_ob_route_stats);
+cli_cmd(debug_ib_policy_miss_stats, debug_ib_policy_miss_stats);
+cli_cmd(debug_ib_route_miss_stats, debug_ib_route_miss_stats);
+cli_cmd(debug_ib_route_stats, debug_ib_route_stats);
+#endif /* ENABLE_TRACE */
 
 /* Inline the PPAC machinery */
 #include <ppac.c>

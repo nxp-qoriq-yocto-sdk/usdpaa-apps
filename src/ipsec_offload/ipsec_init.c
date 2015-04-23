@@ -140,6 +140,7 @@ int ipsec_offload_init(int *dpa_ipsec_id)
 					app_conf.ob_oh_post->tx_channel_id;
 
 	/* OUTB/UL pre SEC params */
+	TRACE("Initializing IPSec outbound policy tables:\n");
 	for (i = 0; i < DPA_IPSEC_MAX_SUPPORTED_PROTOS; i++) {
 		if (cc_out_pre_enc[i] != NULL) {
 			memset(&cls_tbl_params, 0, sizeof(cls_tbl_params));
@@ -162,9 +163,12 @@ int ipsec_offload_init(int *dpa_ipsec_id)
 				table[i].dpa_cls_td = cls_td;
 			ipsec_params.pre_sec_out_params.
 				table[i].key_fields = IPSEC_OUT_POL_KEY_FIELDS;
-		} else
+			TRACE("\t- td[%d] = %d\n", i, cls_td);
+		} else {
 			ipsec_params.pre_sec_out_params.
 				table[i].dpa_cls_td = DPA_OFFLD_DESC_NONE;
+			TRACE("\t- td[%d] = NO_TABLE\n", i);
+		}
 	}
 
 	err = dpa_ipsec_init(&ipsec_params, dpa_ipsec_id);
