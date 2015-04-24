@@ -35,7 +35,7 @@ dist_DATA =  srio_ipsec_offload_config_b4860.xml srio_ipsec_offload_pcd_b4.xml \
 
 AM_CFLAGS := -I$(TOP_LEVEL)/src/srio_ipsec_offload/srio/include\
 	     $(FMC_CFLAGS) $(FMLIB_CFLAGS) $(LIBRTA_CFLAGS) $(LIBXML2_CFLAGS) \
-	     $(DPAOFFLOAD_CFLAGS)
+	     $(DPAOFFLOAD_CFLAGS) -D$(SOC)
 
 srio_ipsec_offload_SOURCES := srio_ipsec_offload.c pcd_init.c \
 			srio_ipsec_init.c xfrm_km.c \
