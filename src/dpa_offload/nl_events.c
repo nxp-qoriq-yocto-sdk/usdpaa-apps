@@ -669,40 +669,52 @@ void neigh_cache_change_cb(struct nl_cache *cache __maybe_unused,
 	nl_object_dump(nl_obj, &dump_params);
 
 	if (family == AF_INET) {
-		if ((nf_arp_in.state & (NUD_PERMANENT|NUD_REACHABLE)) &&
-		    (action == NL_ACT_NEW)) {
-			ret = nf_arp_entry_add(0, &nf_arp_in,
+		/* Add or modify */
+		if (nf_arp_in.state & (NUD_PERMANENT|NUD_REACHABLE)) {
+			struct nf_arp_get_outargs nf_arp_get_out;
+			struct nf_arp_get_inargs nf_arp_get_params;
+
+			/* Check if this ARP entry was already offloaded: */
+			nf_arp_get_params.ifid = nf_arp_in.arp_id.ifid;
+			nf_arp_get_params.ip_address =
+						nf_arp_in.arp_id.ip_address;
+			nf_arp_get_params.operation = NF_ARP_GET_EXACT;
+			ret = nf_arp_entry_get(0, &nf_arp_get_params,
+					NF_API_CTRL_FLAG_NO_RESP_EXPECTED,
+					&nf_arp_get_out, NULL);
+			if (ret)
+				/* Not offloaded. Offload it now */
+				ret = nf_arp_entry_add(0, &nf_arp_in,
 					      NF_API_CTRL_FLAG_NO_RESP_EXPECTED,
 					      &nf_arp_out, NULL);
-		}
-
-		/* CHANGE */
-		if ((nf_arp_in.state & (NUD_PERMANENT|NUD_REACHABLE)) &&
-		    (action == NL_ACT_CHANGE)) {
-			/*
-			 * TODO: the modify entry was taken away in NFAPI v0.5
-			 * Fix the problem and then uncomment this or use
-			 * del/add to modify it.
-			 */
+			else {
+				/* Already offloaded. Modify */
+				/*
+				 * TODO: the modify entry was taken away in
+				 * NFAPI v0.5
+				 * Fix the problem and then uncomment this or
+				 * use del/add to modify it.
+				 */
 #ifdef NFAPI_ARP_ENTRY_MODIFY
-			memcpy(&nf_arp_mod_params, &nf_arp_in,
-				sizeof(nf_arp_in));
-			printf("%s %s : nf_arp_modify_entry\n",
-				__func__, nl_act_tostr(action));
-			ret = nf_arp_entry_modify(0,&nf_arp_mod_params,
+				memcpy(&nf_arp_mod_params, &nf_arp_in,
+					sizeof(nf_arp_in));
+				printf("%s %s : nf_arp_modify_entry\n",
+					__func__, nl_act_tostr(action));
+				ret = nf_arp_entry_modify(0,&nf_arp_mod_params,
 					      NF_API_CTRL_FLAG_NO_RESP_EXPECTED,
 					      &nf_arp_out, NULL);
 #else
-			printf("%s: nf_arp_entry_modify taken out from API\n",
+				printf("%s: nf_arp_entry_modify taken out from API\n",
 					__func__);
+				ret = -ENOSYS;
 #endif
-
+			}
 		}
 
-
-		/* manual del */
-		if ((nf_arp_in.state == NUD_FAILED) &&
-		    (action == NL_ACT_CHANGE)) {
+		/* Delete */
+		if ((nf_arp_in.state & (NUD_STALE|NUD_FAILED)) ||
+				(action == NL_ACT_DEL)) {
+			action = NL_ACT_DEL;
 			nf_arp_del_params.ifid = nf_arp_in.arp_id.ifid;
 			memcpy(&nf_arp_del_params.ip_address,
 				&nf_arp_in.arp_id.ip_address,
@@ -712,64 +724,55 @@ void neigh_cache_change_cb(struct nl_cache *cache __maybe_unused,
 					&nf_arp_out, NULL);
 		}
 
-		/* DEL */
-		if ((nf_arp_in.state & (NUD_STALE|NUD_FAILED)) &&
-		    (action == NL_ACT_DEL)) {
-			nf_arp_del_params.ifid = nf_arp_in.arp_id.ifid;
-			memcpy(&nf_arp_del_params.ip_address,
-				&nf_arp_in.arp_id.ip_address,
-				sizeof(struct in_addr));
-			ret = nf_arp_entry_del(0, &nf_arp_del_params,
-					NF_API_CTRL_FLAG_NO_RESP_EXPECTED,
-					&nf_arp_out, NULL);
-
-		}
+		if (!ret)
+			printf("%s IPv4 ARP entry\n", nl_act_tostr(action));
 	} else {
-		if ((nf_arp_in6.state & (NUD_PERMANENT|NUD_REACHABLE)) &&
-		    (action == NL_ACT_NEW)) {
-			ret = nf_nd_entry_add(0, &nf_arp_in6,
+		/* Add or modify */
+		if (nf_arp_in6.state & (NUD_PERMANENT|NUD_REACHABLE)) {
+			struct nf_nd_get_inargs nf_nd_get_params;
+			struct nf_nd_get_outargs nf_nd_get_out;
+
+			nf_nd_get_params.ifid = nf_arp_in6.nd_id.ifid;
+			memcpy(&nf_nd_get_params.ip_address,
+				&nf_arp_in6.nd_id.ip_address,
+				sizeof(struct nf_ipv6_addr));
+			nf_nd_get_params.operation = NF_ND_GET_EXACT;
+			ret = nf_nd_entry_get(0, &nf_nd_get_params,
+					NF_API_CTRL_FLAG_NO_RESP_EXPECTED,
+					&nf_nd_get_out, NULL);
+			if (ret)
+				/* Not offloaded. Offload it now */
+				ret = nf_nd_entry_add(0, &nf_arp_in6,
 					NF_API_CTRL_FLAG_NO_RESP_EXPECTED,
 					&nf_arp_out6, NULL);
-		}
-
-		/* CHANGE */
-		if ((nf_arp_in6.state & (NUD_PERMANENT|NUD_REACHABLE)) &&
-		    (action == NL_ACT_CHANGE)) {
-			/*
-			 * TODO: the modify entry was taken away in NFAPI v0.5
-			 * Fix the problem and then uncomment this or use
-			 * del/add to modify it.
-			 */
+			else {
+				/* Already offloaded. Modify */
+				/*
+				 * TODO: the modify entry was taken away in
+				 * NFAPI v0.5
+				 * Fix the problem and then uncomment this or
+				 * use del/add to modify it.
+				 */
 #ifdef NFAPI_ARP_ENTRY_MODIFY
-			memcpy(&nf_nd_mod_params, &nf_arp_in6,
-				sizeof(nf_arp_in6));
-			printf("%s %s : nf_arp_modify_entry\n",
-				__func__, nl_act_tostr(action));
-			ret = nf_nd_modify_entry(0, &nf_nd_mod_params,
+				memcpy(&nf_nd_mod_params, &nf_arp_in6,
+					sizeof(nf_arp_in6));
+				printf("%s %s : nf_arp_modify_entry\n",
+					__func__, nl_act_tostr(action));
+				ret = nf_nd_modify_entry(0, &nf_nd_mod_params,
 					NF_API_CTRL_FLAG_NO_RESP_EXPECTED,
 					&nf_arp_out6, NULL);
 #else
-			printf("%s: nf_nd_modify_entry taken out from API\n",
-				__func__);
+				printf("%s: nf_nd_modify_entry taken out from API\n",
+					__func__);
+				ret = -ENOSYS;
 #endif
+			}
 		}
 
-
-		/* manual del */
-		if ((nf_arp_in6.state == NUD_FAILED) &&
-		    (action == NL_ACT_CHANGE)) {
-			nf_nd_del_params.ifid = nf_arp_in6.nd_id.ifid;
-			memcpy(nf_nd_del_params.ip_address.w_addr,
-			       nf_arp_in6.nd_id.ip_address.w_addr,
-			       sizeof(struct in_addr));
-			ret = nf_nd_entry_del(0, &nf_nd_del_params,
-					      NF_API_CTRL_FLAG_NO_RESP_EXPECTED,
-					      &nf_arp_out6, NULL);
-		}
-
-		/* DEL */
-		if ((nf_arp_in6.state & (NUD_STALE|NUD_FAILED)) &&
-		    (action == NL_ACT_DEL)) {
+		/* Delete */
+		if ((nf_arp_in6.state & (NUD_STALE|NUD_FAILED)) ||
+				(action == NL_ACT_DEL)) {
+			action = NL_ACT_DEL;
 			nf_nd_del_params.ifid = nf_arp_in6.nd_id.ifid;
 			memcpy(nf_nd_del_params.ip_address.w_addr,
 			       nf_arp_in6.nd_id.ip_address.w_addr,
@@ -778,6 +781,10 @@ void neigh_cache_change_cb(struct nl_cache *cache __maybe_unused,
 					      NF_API_CTRL_FLAG_NO_RESP_EXPECTED,
 					      &nf_arp_out6, NULL);;
 		}
+
+		if (!ret)
+			printf("%s IPv6 neighbour entry\n",
+							nl_act_tostr(action));
 	}
 }
 
