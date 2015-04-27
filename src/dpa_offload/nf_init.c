@@ -1261,12 +1261,18 @@ static void net_if_finish(struct net_if *interface)
 	list_for_each_entry(rx_fqrange, &interface->rx_list, list)
 		for (loop = 0; loop < rx_fqrange->rx_count; loop++)
 			teardown_fq(&rx_fqrange->rx[loop].fq);
-
+/*
+ * CAUTION: Initializing / using offline port Rx default or Rx error queues
+ * causes the application to fail to restart. On second run it would crash in
+ * IP reassembly initialization. This is being investigated and will be fixed.
+ */
+#if 0 /* WORKAROUND */
 	/* For offline ports we need to tear down port Rx frame queues: */
 	if (fif->mac_type == fman_offline) {
 		teardown_fq(&interface->rx_default[0]);
 		teardown_fq(&interface->rx_error);
 	}
+#endif /* WORKAROUND */
 
 	/* Cleanup Tx FQs */
 	for (loop = 0; loop < interface->num_tx_fqs; loop++)
@@ -1721,7 +1727,12 @@ static int net_if_rx_init(struct net_if * i)
 			fprintf(stderr, "INFO: shared net_if_admin_fq_init for state oos and rx_default[0]=%u\n",
 					qman_fq_fqid(&i->rx_default[0]));
 		}
-
+/*
+ * CAUTION: Initializing / using offline port Rx default or Rx error queues
+ * causes the application to fail to restart. On second run it would crash in
+ * IP reassembly initialization. This is being investigated and will be fixed.
+ */
+#if 0 /* WORKAROUND */
 	} else {
 		net_if_admin_fq_init(&i->rx_error, fif->fqid_rx_err,
 				get_next_rx_channel(), &stash_opts,
@@ -1730,6 +1741,7 @@ static int net_if_rx_init(struct net_if * i)
 		net_if_admin_fq_init(&i->rx_default[0], i->cfg->rx_def,
 				get_next_rx_channel(), &stash_opts,
 				cb_dqrr_rx_default);
+#endif /* WORKAROUND */
 	}
 
 	list_for_each_entry(fqr, i->cfg->list, list) {
