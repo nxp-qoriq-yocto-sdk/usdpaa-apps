@@ -353,8 +353,8 @@ int test_vector_match(uint32_t *left, uint32_t *right, uint32_t bitlen)
 		/* compare left[bitlen >> 5] with right[bitlen >> 5]
 		 *  on the remaining number of bits
 		 */
-		uint32_t left_last = left[bitlen >> 5];
-		uint32_t right_last = right[bitlen >> 5];
+		uint32_t left_last = be32_to_cpu(left[bitlen >> 5]);
+		uint32_t right_last = be32_to_cpu(right[bitlen >> 5]);
 
 		if ((left_last | bitmasks[reminder_bitlen])
 		    != (right_last | bitmasks[reminder_bitlen])) {
