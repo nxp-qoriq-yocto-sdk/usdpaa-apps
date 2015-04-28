@@ -78,9 +78,9 @@ static void *get_attributes(xmlNodePtr node, xmlChar *attr)
 	return atr;
 }
 
-static uint32_t calc_ratelimit(char *p)
+static uint64_t calc_ratelimit(char *p)
 {
-	uint32_t rate;
+	uint64_t rate;
 	char last_char;
 
 	rate = atoi(p);
@@ -245,8 +245,8 @@ int ceetm_cfg_channel_parse(xmlNodePtr cur, struct ceetm_channel_info **info)
 	struct ceetm_channel_info *channel;
 	uint8_t num_group;
 	uint8_t is_shaping = 0;
-	uint32_t cr = 0;
-	uint32_t er = 0;
+	uint64_t cr = 0;
+	uint64_t er = 0;
 	char *tmp;
 
 	tmp = (char *)get_attributes(cur, BAD_CAST CEETM_CFG_SHAPER);
@@ -312,8 +312,8 @@ int ceetm_cfg_lni_parse(xmlNodePtr cur, struct ceetm_lni_info **info)
 {
 	struct ceetm_lni_info *lni;
 	uint8_t is_shaping = 0;
-	uint32_t cr = 0;
-	uint32_t er = 0;
+	uint64_t cr = 0;
+	uint64_t er = 0;
 	char *tmp;
 
 	tmp = (char *)get_attributes(cur, BAD_CAST CEETM_CFG_SHAPER);

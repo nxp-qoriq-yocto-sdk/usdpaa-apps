@@ -47,8 +47,8 @@ struct ceetm_channel_info {
 	struct list_head list;
 	uint8_t num_group;
 	uint8_t is_shaping;
-	uint32_t cr;
-	uint32_t er;
+	uint64_t cr;
+	uint64_t er;
 	struct ceetm_group_info *group_a;
 	struct ceetm_group_info *group_b;
 	struct list_head cq_list;
@@ -66,8 +66,8 @@ struct ceetm_cq_info {
 
 struct ceetm_lni_info {
 	uint8_t is_shaping;
-	uint32_t cr;
-	uint32_t er;
+	uint64_t cr;
+	uint64_t er;
 	struct list_head channel_list;
 };
 
