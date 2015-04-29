@@ -256,7 +256,7 @@ int main(int argc, char *argv[])
 	while(!main_quit) {
 		cli = readline("> ");
 		if (cli == NULL) {
-			fprintf(stderr, "Error while reading command.\n");
+			error(0, EINVAL, "Unable to read user command");
 			break;
 		}
 		if (cli[0] == '\0') {
@@ -267,8 +267,7 @@ int main(int argc, char *argv[])
 		/* Compute arguments for command. */
 		cli_argv = history_tokenize(cli);
 		if (cli_argv == NULL) {
-			fprintf(stderr, "Error while parsing command '%s'.\n",
-				cli);
+			error(0, EINVAL, "Failed to parse user command");
 			free(cli);
 			continue;
 		}
@@ -303,14 +302,14 @@ int main(int argc, char *argv[])
 			}
 			if ((i >= MAX_CLI_COMMANDS) ||
 						(!cli_command[i].name[0])) {
-				fprintf(stderr, "Command not found: %s\n\n",
-					cli_argv[0]);
 				ret = -ENOENT;
+				error(0, -ret, "No such command: %s\n\n",
+					cli_argv[0]);
 			}
 		}
 
 		if (ret)
-			error(0, -ret, "Error on command");
+			error(0, -ret, "Command failed");
 		else
 			add_history(cli);
 

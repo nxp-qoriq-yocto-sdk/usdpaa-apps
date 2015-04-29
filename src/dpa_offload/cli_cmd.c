@@ -264,7 +264,10 @@ static void acquire_ip4_rule_params(char *argv[], struct nf_ip4_fwd_pbr_rule *ip
 	str_ton(AF_INET, ch, &addr);
 	ip4_rule->src_addr = addr.sin_addr.s_addr;
 	ch = strtok(NULL, "/");
-	ip4_rule->srcip_prefix = atoi(ch);
+	if (ch)
+		ip4_rule->srcip_prefix = atoi(ch);
+	else
+		ip4_rule->srcip_prefix = DPA_OFFLD_IPv4_ADDR_LEN_BYTES * 8;
 
 	/* Acquire destination IPv4 address */
 	memset(&addr, 0, sizeof(addr));
@@ -272,7 +275,10 @@ static void acquire_ip4_rule_params(char *argv[], struct nf_ip4_fwd_pbr_rule *ip
 	str_ton(AF_INET, ch, &addr);
 	ip4_rule->dst_addr = addr.sin_addr.s_addr;
 	ch = strtok(NULL, "/");
-	ip4_rule->dstip_prefix = atoi(ch);
+	if (ch)
+		ip4_rule->dstip_prefix = atoi(ch);
+	else
+		ip4_rule->dstip_prefix = DPA_OFFLD_IPv4_ADDR_LEN_BYTES * 8;
 }
 
 static void acquire_ip6_rule_params(char *argv[], struct nf_ip6_fwd_pbr_rule *ip6_rule)
@@ -287,7 +293,10 @@ static void acquire_ip6_rule_params(char *argv[], struct nf_ip6_fwd_pbr_rule *ip
 	memcpy(ip6_rule->src_addr.w_addr, addr.sin6_addr.s6_addr,
 			sizeof(struct in6_addr));
 	ch = strtok(NULL, "/");
-	ip6_rule->srcip_prefix = atoi(ch);
+	if (ch)
+		ip6_rule->srcip_prefix = atoi(ch);
+	else
+		ip6_rule->srcip_prefix = DPA_OFFLD_IPv6_ADDR_LEN_BYTES * 8;
 
 	/* Acquire destination IPv6 address */
 	memset(&addr, 0, sizeof(addr));
@@ -296,7 +305,10 @@ static void acquire_ip6_rule_params(char *argv[], struct nf_ip6_fwd_pbr_rule *ip
 	memcpy(ip6_rule->dst_addr.w_addr, addr.sin6_addr.s6_addr,
 			sizeof(struct in6_addr));
 	ch = strtok(NULL, "/");
-	ip6_rule->dstip_prefix = atoi(ch);
+	if (ch)
+		ip6_rule->dstip_prefix = atoi(ch);
+	else
+		ip6_rule->dstip_prefix = DPA_OFFLD_IPv6_ADDR_LEN_BYTES * 8;
 }
 
 static int ib_rule_add4(int argc, char *argv[])
@@ -349,7 +361,7 @@ static int ib_rule_add4(int argc, char *argv[])
 			   NF_API_CTRL_FLAG_NO_RESP_EXPECTED, &out_args,
 			   NULL);
 	if (ret) {
-		error(0, -ret, "nf_ip4_fwd_pbr_rule_add");
+		error(0, -ret, "nf_ip4_fwd_pbr_rule_add returned");
 		return ret;
 	}
 
@@ -418,7 +430,7 @@ static int ib_rule_add6(int argc, char *argv[])
 			   NF_API_CTRL_FLAG_NO_RESP_EXPECTED, &out_args,
 			   NULL);
 	if (ret) {
-		error(0, -ret, "nf_ip6_fwd_pbr_rule_add");
+		error(0, -ret, "nf_ip6_fwd_pbr_rule_add returned");
 		return ret;
 	}
 
@@ -469,7 +481,7 @@ static int ib_rule_del4(int argc, char *argv[])
 				      NF_API_CTRL_FLAG_NO_RESP_EXPECTED,
 				      NULL, NULL);
 	if (ret) {
-		error(0, -ret, "nf_ip4_fwd_pbr_rule_delete");
+		error(0, -ret, "nf_ip4_fwd_pbr_rule_delete returned");
 		return -EINVAL;
 	}
 
@@ -533,7 +545,7 @@ static int ib_rule_del6(int argc, char *argv[])
 				      NF_API_CTRL_FLAG_NO_RESP_EXPECTED,
 				      NULL, NULL);
 	if (ret) {
-		error(0, -ret, "nf_ip6_fwd_pbr_rule_delete");
+		error(0, -ret, "nf_ip6_fwd_pbr_rule_delete returned");
 		return -EINVAL;
 	}
 
