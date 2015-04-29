@@ -39,13 +39,7 @@
 #include <common_nfapi.h>
 #include <ipsec_nfapi.h>
 
-struct sadb_msg *do_sadbget(
-			uint32_t spi, int af,
-			xfrm_address_t saddr, xfrm_address_t daddr,
-			struct nf_ipsec_sa *sa_params,
-			struct xfrm_encap_tmpl *encap);
-struct sadb_msg *do_spdget(
-		int spid, xfrm_address_t *saddr,
+int do_spdget(	int spid, xfrm_address_t *saddr,
 		xfrm_address_t *daddr, int *sa_af);
 
 int get_auth_alg_by_name(const char *auth_alg_name);
