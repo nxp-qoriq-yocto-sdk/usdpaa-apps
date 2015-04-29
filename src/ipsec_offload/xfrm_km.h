@@ -80,13 +80,7 @@ struct dpa_sa {
 	int parent_sa_id;
 };
 
-struct sadb_msg *do_sadbget(
-			uint32_t spi, int af,
-			xfrm_address_t saddr, xfrm_address_t daddr,
-			struct dpa_ipsec_sa_params *sa_params,
-			struct xfrm_encap_tmpl *encap);
-struct sadb_msg *do_spdget(
-		int spid, xfrm_address_t *saddr,
+int do_spdget(	int spid, xfrm_address_t *saddr,
 		xfrm_address_t *daddr, int *sa_af);
 int get_algs_by_name(const char *cipher_alg_name, const char *auth_alg_name);
 

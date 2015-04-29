@@ -1311,7 +1311,6 @@ static int process_new_policy(const struct nlmsghdr	*nh,
 {
 
 	struct xfrm_userpolicy_info *pol_info;
-	struct sadb_msg *m;
 	struct list_head *pols = NULL;
 	struct dpa_sa *dpa_sa;
 	struct dpa_pol *dpa_pol, *pol;
@@ -1343,8 +1342,8 @@ static int process_new_policy(const struct nlmsghdr	*nh,
 	trace_xfrm_policy_info(pol_info);
 
 	/* get SA tmpl */
-	m = do_spdget(pol_info->index, &saddr, &daddr, &af);
-	if (unlikely(!m)) {
+	ret = do_spdget(pol_info->index, &saddr, &daddr, &af);
+	if (unlikely(ret)) {
 		fprintf(stderr,
 			"Policy doesn't exist in kernel SPDB\n");
 		goto out_new_pol;
