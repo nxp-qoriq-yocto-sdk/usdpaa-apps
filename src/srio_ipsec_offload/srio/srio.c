@@ -35,15 +35,16 @@
 #include <fsl_srio.h>
 #include <error.h>
 #include <srio.h>
+#include <unistd.h>
 /* Handle SRIO error interrupt */
 void *srio_error_poll(void *data)
 {
 	int s, srio_fd, nfds;
 	fd_set readset;
 	uint32_t junk;
-	struct srio_dev *sriodev = data;
+	struct srio_dev *srio_dev = data;
 
-	srio_fd = fsl_srio_fd(sriodev);
+	srio_fd = fsl_srio_fd(srio_dev);
 	nfds = srio_fd + 1;
 
 	while (1) {
@@ -63,13 +64,13 @@ void *srio_error_poll(void *data)
 	pthread_exit(NULL);
 }
 
-void fsl_srio_err_handle_enable(struct srio_dev *sriodev)
+void fsl_srio_err_handle_enable(struct srio_dev *srio_dev)
 {
 	int ret;
 	pthread_t interrupt_handler_id;
 
 	ret = pthread_create(&interrupt_handler_id, NULL,
-			     srio_error_poll, sriodev);
+			     srio_error_poll, srio_dev);
 	if (ret)
 		error(0, errno, "Create interrupt handler thread error");
 }

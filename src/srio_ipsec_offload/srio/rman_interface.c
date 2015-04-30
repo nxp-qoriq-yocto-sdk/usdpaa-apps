@@ -33,6 +33,7 @@
 #include <compat.h>
 #include <rman_fq_interface.h>
 #include <rman_interface.h>
+#include <unistd.h>
 
 #define RMAN_MAX_NUM_OF_IB 4
 extern struct srio_dev *sriodev;
@@ -144,20 +145,20 @@ rman_status_dqrr(struct qman_portal *portal,
 		    struct qman_fq *fq,
 		    const struct qm_dqrr_entry *dqrr)
 {
-	struct qm_fd *fd = &dqrr->fd;
+    const struct qm_fd *fd = &dqrr->fd;
     int num = bman_query_free_buffers(pool[fd->bpid]);
+
     printf("bpid %d avaliable buffers = 0%x\n", fd->bpid, num);
-	void *annotations = __dma_mem_ptov(qm_fd_addr(fd));
     if(fd->format == qm_fd_sg) {
-        struct qm_sg_entry *sg;
-		sg = annotations + fd->offset;
         hexdump(fd, sizeof(struct qm_fd));
     }
-	rman_drop_frame(&dqrr->fd);
-	rman_if_rxs_disable();
+
+    rman_drop_frame(&dqrr->fd);
+    rman_if_rxs_disable();
     sleep(1);
-	rman_if_rxs_enable();
-	return qman_cb_dqrr_consume;
+    rman_if_rxs_enable();
+
+    return qman_cb_dqrr_consume;
 }
 
 void rman_rx_disable(struct rman_rx *rx)
@@ -586,7 +587,7 @@ void rman_if_reconfig(const struct rman_cfg *cfg)
 	rman_dev_config(rmif->rmdev, cfg);
 }
 
-int rman_if_init(struct srio_dev *sriodev, const struct rman_cfg *cfg)
+int rman_if_init(struct srio_dev *srio_dev, const struct rman_cfg *cfg)
 {
 	int err, i;
 
@@ -600,7 +601,7 @@ int rman_if_init(struct srio_dev *sriodev, const struct rman_cfg *cfg)
 	}
 	memset(rmif, 0, sizeof(*rmif));
     
-    rmif->sriodev = sriodev;
+        rmif->sriodev = srio_dev;
 
 	rmif->rmdev = rman_dev_init();
 	if (!rmif->rmdev) {

@@ -145,15 +145,6 @@ static int init_local_tables_ob(struct fman_if *__if, t_Handle *cc_nodes)
 
 }
 
-static int init_local_tables_ib(struct fman_if *__if, t_Handle *cc_nodes)
-{
-	int ret;
-	struct ppac_interface *ppac_if = get_ppac_if(__if);
-	ret = init_tables(cc_nodes, local_cc_num_keys, local_cc_key_size,
-			&ppac_if->ppam_data.local_td_ib);
-	return ret;
-}
-
 static void cleanup_local_tables_ob(struct fman_if *__if)
 {
 	int i, td;
@@ -163,17 +154,6 @@ static void cleanup_local_tables_ob(struct fman_if *__if)
 		dpa_classif_table_free(td);
 	}
 }
-
-static void cleanup_local_tables_ib(struct fman_if *__if)
-{
-	int i, td;
-	struct ppac_interface *ppac_if = get_ppac_if(__if);
-	for (i = 0; i < MAX_ETHER_TYPES; i++) {
-		td = (ppac_if->ppam_data.local_td_ib)[i];
-		dpa_classif_table_free(td);
-	}
-}
-
 
 static int table_insert_entry(int td, u8 *key, u8 *mask,
 			      int key_size, int hmd, uint32_t fqid)
@@ -422,7 +402,7 @@ int create_local_entry(int ifindex, int af, u8 *key)
 	struct ppac_interface *ppac_if;
 	int td;
 	int key_size;
-	int *local_td;
+	int *local_td = NULL;
 	int ppac_if_found = 0;
 
 	if (!if_indextoname(ifindex, macless_name))
@@ -474,7 +454,7 @@ int remove_local_entry(int ifindex, int af, u8 *key)
 	int td, ret = 0;
 	int key_size;
 	struct ppac_interface *ppac_if;
-	int *local_td;
+	int *local_td = NULL;
 	char macless_name[IF_NAMESIZE];
 	int ppac_if_found = 0;
 
@@ -846,7 +826,7 @@ static void *neigh_msg_loop(void *data)
 			}
 		}
 	}
-out3:
+
 	cleanup_local_tables_ob(app_conf.ob_eth);
 out2:
 	cleanup_neigh_tables(app_conf.ib_oh);

@@ -44,6 +44,7 @@
 #include <rman_fq_interface.h>
 #include <srio.h>
 #include <dma_mem.h>
+#include <unistd.h>
 
 /* Should change it as static */
 static struct rman_rx *rman_rx;
@@ -201,13 +202,8 @@ void rman_interrupt_handler_start(void)
 
 int rman_init(void)
 {
-    int i, j, err;
-	struct dma_pool *dmapool = NULL;
+    int i, err;
     int port_num;
-    uint32_t count, desc_size;
-    struct dma_link_dsc *desc_virt;
-    dma_addr_t src_phys, dst_phys;
-    dma_addr_t desc_phys;
 
     /* sRIO init */
 	err = fsl_srio_uio_init(&sriodev);

@@ -149,7 +149,6 @@ struct fmc_model_t *fmc_compile_model(void)
 int fmc_apply_model(void)
 {
 	t_Error err = E_OK;
-	const char *port_type;
 	char fmc_path[64];
 
 	err = fmc_execute(&cmodel);

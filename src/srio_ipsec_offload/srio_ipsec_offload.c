@@ -53,7 +53,7 @@
 #include <rman_interface.h>
 #include <rman_fq_interface.h>
 #include <rman_cfg.h>
-extern int rman_init();
+extern int rman_init(void);
 /* All of the following things could be placed into vtables, declared as
  * "extern", implemented elsewhere, and generally made less hacky if you want.
  *
@@ -1006,8 +1006,8 @@ static const struct argp_option argp_opts[] = {
 	{"mtu-pre-enc", 'r', "INT", 0, "MTU pre encryption"},
 	{"inb-pol-check" , 'c' , 0, 0, "Inbound policy verification"},
 	{"outer-tos", 'x', "INT", 0, "Outer header TOS field"},
-	{"ib-ecn", 'y', 0, 0, "Inbound ECN tunneling"},
-	{"ob-ecn", 'z', 0, 0, "Outbound ECN tunneling"},
+	{"disable-ib-ecn", 'y', 0, 0, "Inbound ECN tunneling"},
+	{"disable-ob-ecn", 'z', 0, 0, "Outbound ECN tunneling"},
 	{"ib-loop", 'l', 0, 0, "Loopback on inbound Ethernet port"},
 	{"vif", 'v', "FILE", 0 , "Virtual inbound interface name"},
 	{"vof", 'w', "FILE", 0 , "Virtual outbound interface name"},
