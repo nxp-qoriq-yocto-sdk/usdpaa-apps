@@ -71,6 +71,8 @@ static LIST_HEAD(pending_sp);
 static struct thread_data *xfrm_data;
 static volatile sig_atomic_t quit;
 static pthread_t tid;
+static unsigned next_in_ipsec_policy_id;
+static unsigned next_out_ipsec_policy_id;
 
 static void xfrm_sig_handler(int signum)
 {
@@ -134,6 +136,8 @@ static int offload_sa(int dpa_ipsec_id, struct nf_sa *nf_sa, struct nf_pol *nf_p
 	sa_params->spi = sa_info->id.spi;
 	sa_params->protocol = IPPROTO_ESP;
 
+	memset(&sa_sel, 0, sizeof(sa_sel));
+
 	if (dir == XFRM_POLICY_OUT) {
 		if (sa_info->family == AF_INET) {
 			sa_params->te_addr.src_ip.version = NF_IPV4;
@@ -164,6 +168,7 @@ static int offload_sa(int dpa_ipsec_id, struct nf_sa *nf_sa, struct nf_pol *nf_p
 			sa_params->nat_info.dest_port = encap->encap_dport;
 		}
 		sa_params->outb.iv = NULL;
+		sa_sel.policy_id = next_out_ipsec_policy_id++;
 	} else if (dir == XFRM_POLICY_IN) {
 		if (encap->encap_sport && encap->encap_dport) {
 			sa_params->cmn_flags |=
@@ -190,15 +195,14 @@ static int offload_sa(int dpa_ipsec_id, struct nf_sa *nf_sa, struct nf_pol *nf_p
 			       sa_info->id.daddr.a6,
 			       sizeof(sa_info->id.daddr.a6));
 		}
-	}
 
-	memset(&sa_sel, 0, sizeof(sa_sel));
+		sa_sel.policy_id = next_in_ipsec_policy_id++;
+	}
 
 	/* For now, we support only one selector */
 	sa_params->n_selectors = 1;
 	sa_params->selectors = &sa_sel;
 
-	sa_sel.policy_id = nf_pol->xfrm_pol_info.index;
 	if (sel->family == AF_INET) {
 		sa_sel.selector.version = NF_IPV4;
 		sa_sel.selector.src_ip4.type = NF_IPA_SUBNET;
@@ -248,7 +252,7 @@ static int offload_sa(int dpa_ipsec_id, struct nf_sa *nf_sa, struct nf_pol *nf_p
 }
 
 static inline int offload_policy(struct nf_ipsec_policy *pol_params,
-				struct xfrm_selector *sel, int dir)
+			struct xfrm_selector *sel, enum nf_ipsec_direction dir)
 {
 	struct nf_ipsec_spd_add_inargs spd_add_in;
 	struct nf_ipsec_spd_add_outargs	spd_add_out;
@@ -258,6 +262,7 @@ static inline int offload_policy(struct nf_ipsec_policy *pol_params,
 	memset(&spd_add_in, 0, sizeof(spd_add_in));
 
 	spd_add_in.tunnel_id = 0;
+	spd_add_in.dir = dir;
 	spd_add_in.spd_params.policy_id = pol_params->policy_id;
 
 	spd_add_in.spd_params.action = NF_IPSEC_POLICY_ACTION_IPSEC;
@@ -272,11 +277,6 @@ static inline int offload_policy(struct nf_ipsec_policy *pol_params,
 
 	spd_add_in.spd_params.n_selectors = 1;
 	spd_add_in.spd_params.selectors = &spd_sel;
-
-	if (dir == XFRM_POLICY_OUT)
-		spd_add_in.dir = NF_IPSEC_OUTBOUND;
-	else
-		spd_add_in.dir = NF_IPSEC_INBOUND;
 
 	if (sel->family == AF_INET) {
 		spd_sel.version = NF_IPV4;
@@ -447,19 +447,23 @@ static inline int do_offload(int dpa_ipsec_id, struct nf_sa *nf_sa,
 #endif
 	}
 
-	if (nf_pol->xfrm_pol_info.dir == XFRM_POLICY_IN)
+	if (nf_pol->xfrm_pol_info.dir == XFRM_POLICY_IN) {
+		nf_pol->dir = NF_IPSEC_INBOUND;
 		return ret;
+	} else
+		nf_pol->dir = NF_IPSEC_OUTBOUND;
 
-	nf_pol->pol_params.policy_id = nf_pol->xfrm_pol_info.index;
+	nf_pol->pol_params.policy_id = next_out_ipsec_policy_id++;
 
 	ret = offload_policy(&nf_pol->pol_params,
-			&nf_pol->xfrm_pol_info.sel, nf_pol->xfrm_pol_info.dir);
+			&nf_pol->xfrm_pol_info.sel, nf_pol->dir);
 	if (ret < 0) {
 		fprintf(stderr, "offload_policy failed, ret %d\n", ret);
 		list_del(&nf_pol->list);
 		free(nf_pol);
 		return ret;
 	}
+	nf_pol->policy_id = nf_pol->pol_params.policy_id;
 	trace_nf_policy(nf_pol);
 	return ret;
 }
@@ -661,7 +665,7 @@ static inline int flush_nf_policies(void)
 					&spd_out, NULL);
 
 			if (ret != 0) {
-				error(0, ret, "Failed to remove OUTBOUND SPD rule.");
+				error(0, ret, "Failed to remove OUTBOUND SPD rule");
 				return ret;
 			}
 
@@ -855,8 +859,7 @@ static int process_notif_sa(const struct nlmsghdr	*nh, int len,
 		if (ret < 0)
 			return ret;
 
-		/* move policy from
-		pending to nf_sa list */
+		/* move policy from pending to nf_sa list */
 		list_del(&nf_pol->list);
 		list_add_tail(&nf_pol->list, pol_list);
 	}
