@@ -203,6 +203,12 @@ static int offload_sa(int dpa_ipsec_id, struct nf_sa *nf_sa, struct nf_pol *nf_p
 	sa_params->n_selectors = 1;
 	sa_params->selectors = &sa_sel;
 
+	/*
+	 * Temporary workaround until the support for multiple selectors is
+	 * added: update IPSec policy Id with the SA selector Id
+	 */
+	nf_pol->policy_id = sa_sel.policy_id;
+
 	if (sel->family == AF_INET) {
 		sa_sel.selector.version = NF_IPV4;
 		sa_sel.selector.src_ip4.type = NF_IPA_SUBNET;
@@ -453,7 +459,7 @@ static inline int do_offload(int dpa_ipsec_id, struct nf_sa *nf_sa,
 	} else
 		nf_pol->dir = NF_IPSEC_OUTBOUND;
 
-	nf_pol->pol_params.policy_id = next_out_ipsec_policy_id++;
+	nf_pol->pol_params.policy_id = nf_pol->policy_id;
 
 	ret = offload_policy(&nf_pol->pol_params,
 			&nf_pol->xfrm_pol_info.sel, nf_pol->dir);
@@ -463,7 +469,6 @@ static inline int do_offload(int dpa_ipsec_id, struct nf_sa *nf_sa,
 		free(nf_pol);
 		return ret;
 	}
-	nf_pol->policy_id = nf_pol->pol_params.policy_id;
 	trace_nf_policy(nf_pol);
 	return ret;
 }
