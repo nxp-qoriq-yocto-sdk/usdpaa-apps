@@ -365,7 +365,7 @@ static int ib_rule_add4(int argc, char *argv[])
 		return ret;
 	}
 
-	printf("\nSuccess.\n\n");
+	printf("\nSuccess.\n");
 	return 0;
 }
 
@@ -434,7 +434,7 @@ static int ib_rule_add6(int argc, char *argv[])
 		return ret;
 	}
 
-	printf("\nSuccess.\n\n");
+	printf("\nSuccess.\n");
 	return 0;
 }
 
@@ -443,8 +443,8 @@ static int ib_rule_del4(int argc, char *argv[])
 	struct nf_ip4_fwd_pbr_rule_del nfapi_rule_del;
 	int ret;
 
-	if (argc < 3) {
-		printf("\nSyntax: %s <src_ip>/<prefix> <dst_ip>/<prefix> [ <hex_tos> ]\n\n",
+	if (argc < 4) {
+		printf("\nSyntax: %s <src_ip>/<prefix> <dst_ip>/<prefix> <priority> [ <hex_tos> ]\n\n",
 			__func__);
 		return -EINVAL;
 	}
@@ -461,14 +461,17 @@ static int ib_rule_del4(int argc, char *argv[])
 
 	acquire_ip4_rule_params(argv, (struct nf_ip4_fwd_pbr_rule*)&nfapi_rule_del);
 
+	nfapi_rule_del.priority = atoi(argv[3]);
+
 	printf("\nRemove IPv4 inbound rule\n");
 	TRACE("\t- Source: 0x%08x / %d\n", nfapi_rule_del.src_addr,
 						nfapi_rule_del.srcip_prefix);
 	TRACE("\t- Dest:   0x%08x / %d\n", nfapi_rule_del.dst_addr,
 						nfapi_rule_del.dstip_prefix);
+	TRACE("\t- Priority: %d\n", nfapi_rule_del.priority);
 
-	if (argc > 3) {
-		nfapi_rule_del.tos = strtol(argv[3], NULL, 16);
+	if (argc > 4) {
+		nfapi_rule_del.tos = strtol(argv[4], NULL, 16);
 		TRACE("\t- TOS: 0x%x\n", nfapi_rule_del.tos);
 #ifdef ENABLE_TRACE
 	} else
@@ -485,7 +488,7 @@ static int ib_rule_del4(int argc, char *argv[])
 		return -EINVAL;
 	}
 
-	printf("\nSuccess.\n\n");
+	printf("\nSuccess.\n");
 	return 0;
 }
 
@@ -497,8 +500,8 @@ static int ib_rule_del6(int argc, char *argv[])
 	int i;
 #endif /* ENABLE_TRACE */
 
-	if (argc < 3) {
-		printf("\nSyntax: %s <src_ip>/<prefix> <dst_ip>/<prefix> [ <hex_tos> ]\n\n",
+	if (argc < 4) {
+		printf("\nSyntax: %s <src_ip>/<prefix> <dst_ip>/<prefix> <priority> [ <hex_tc> ]\n\n",
 			__func__);
 		return -EINVAL;
 	}
@@ -515,6 +518,8 @@ static int ib_rule_del6(int argc, char *argv[])
 
 	acquire_ip6_rule_params(argv, (struct nf_ip6_fwd_pbr_rule*)&nfapi_rule_del);
 
+	nfapi_rule_del.priority = atoi(argv[3]);
+
 	printf("\nRemove IPv6 inbound rule\n");
 #ifdef ENABLE_TRACE
 	TRACE("\t- Source: ");
@@ -528,11 +533,10 @@ static int ib_rule_del6(int argc, char *argv[])
 	TRACE("%04x / %d\n", nfapi_rule_del.dst_addr.w_addr[i],
 						nfapi_rule_del.dstip_prefix);
 	TRACE("\t- Priority: %d\n", nfapi_rule_del.priority);
-	TRACE("\t- Destination route table: %d\n", nfapi_rule_del.rt_table_no);
 #endif /* ENABLE_TRACE */
 
-	if (argc > 3) {
-		nfapi_rule_del.tc = strtol(argv[3], NULL, 16);
+	if (argc > 4) {
+		nfapi_rule_del.tc = strtol(argv[4], NULL, 16);
 		TRACE("\t- TC: 0x%x\n", nfapi_rule_del.tc);
 #ifdef ENABLE_TRACE
 	} else
@@ -549,7 +553,7 @@ static int ib_rule_del6(int argc, char *argv[])
 		return -EINVAL;
 	}
 
-	printf("\nSuccess.\n\n");
+	printf("\nSuccess.\n");
 	return 0;
 }
 
