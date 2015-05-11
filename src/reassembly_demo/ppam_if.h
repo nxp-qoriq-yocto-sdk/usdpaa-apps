@@ -35,7 +35,7 @@
 
 #include <stdint.h>
 
-#if defined(B4860) || defined(T4240) || defined(T2080)
+#if defined(B4420) || defined(B4860) || defined(T4240) || defined(T2080)
 #define VSP_SUPPORTED
 #endif
 
