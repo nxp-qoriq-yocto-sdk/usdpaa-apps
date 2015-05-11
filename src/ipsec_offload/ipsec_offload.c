@@ -52,9 +52,9 @@
 #include "app_common.h"
 #include "ipsec_sizing.h"
 
-#if defined(B4860) || defined(T4240) || defined(B4420)
+#ifdef VSP_SUPPORTED
 #include "fm_vsp_ext.h"
-#endif
+#endif /* VSP_SUPPORTED */
 
 /* All of the following things could be placed into vtables, declared as
  * "extern", implemented elsewhere, and generally made less hacky if you want.
@@ -115,7 +115,7 @@ static int dpa_ipsec_id;
 static struct fmc_model_t *cmodel;
 static pthread_t xfrm_tid, neigh_tid;
 
-#if defined(B4860) || defined(T4240) || defined(B4420)
+#ifdef VSP_SUPPORTED
 
 static t_Handle	vsp;
 static t_Handle	fm_obj;
@@ -194,7 +194,7 @@ static int vsp_clean(void)
 
 	return E_OK;
 }
-#endif
+#endif /* VSP_SUPPORTED */
 
 static void cleanup_macless_config(char *macless_name)
 {
@@ -319,11 +319,11 @@ static int setup_macless_if_rx(struct ppac_interface *i,
 			"ib_post_ip_cc",
 			app_conf.fm, app_conf.ib_oh->mac_idx);
 
-#if defined(B4860) || defined(T4240) || defined(B4420)
+#ifdef VSP_SUPPORTED
 		ret = set_cc_miss_fqid_with_vsp(cmodel, fmc_path, rx_start);
 #else
 		ret = set_cc_miss_fqid(cmodel, fmc_path, rx_start);
-#endif
+#endif /* VSP_SUPPORTED */
 
 		if (ret < 0)
 			goto err;
@@ -332,11 +332,11 @@ static int setup_macless_if_rx(struct ppac_interface *i,
 		sprintf(fmc_path, "fm%d/port/OFFLINE/%d/ccnode/"
 			"ib_post_ip6_cc",
 			app_conf.fm, app_conf.ib_oh->mac_idx);
-#if defined(B4860) || defined(T4240) || defined(B4420)
+#ifdef VSP_SUPPORTED
 		ret = set_cc_miss_fqid_with_vsp(cmodel, fmc_path, rx_start);
 #else
 		ret = set_cc_miss_fqid(cmodel, fmc_path, rx_start);
-#endif
+#endif /* VSP_SUPPORTED */
 		if (ret < 0)
 			goto err;
 	}
@@ -979,7 +979,7 @@ int ppam_init(void)
 			goto bp_cleanup;
 	}
 
-#if defined(B4860) || defined(T4240) || defined(B4420)
+#ifdef VSP_SUPPORTED
 
 	ret = vsp_init(app_conf.fm, app_conf.ib_oh->mac_idx,
 				   e_FM_PORT_TYPE_OH_OFFLINE_PARSING);
@@ -989,7 +989,7 @@ int ppam_init(void)
 	}
 
 	TRACE("VSP initialized\n");
-#endif
+#endif /* VSP_SUPPORTED */
 
 	return 0;
 
@@ -1093,9 +1093,9 @@ void ppam_finish(void)
 	cleanup_macless_config(app_conf.vif);
 	cleanup_macless_config(app_conf.vof);
 	cleanup_buffer_pools();
-#if defined(B4860) || defined(T4240) || defined(B4420)
+#ifdef VSP_SUPPORTED
 	vsp_clean();
-#endif
+#endif /* VSP_SUPPORTED */
 }
 
 /* Swap 6-byte MAC headers "efficiently" (hopefully) */

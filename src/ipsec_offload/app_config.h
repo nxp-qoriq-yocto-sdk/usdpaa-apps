@@ -74,6 +74,11 @@ static const int ob_oh_pre_tx_fqid[MAX_DPA_IPSEC_INSTANCES] = {0x3e81, 0x4e81};
 #define OB_TX_FQID			0x2e80
 #define IB_OH_TX_FQID			0x2e81
 
+/* Configure virtual storage profile support for the proper platforms: */
+#if defined(B4420) || defined(B4860) || defined(T4240) || defined(T2080)
+#define VSP_SUPPORTED
+#endif
+
 /* virtual storage profile used on the IB OH (only in case of ONIC) */
 #define VSP_ID					1
 #define VSP_BP_SIZE				1728
