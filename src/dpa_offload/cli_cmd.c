@@ -162,11 +162,19 @@ static int ipsec_stats(int argc,
 				out.stats.outb_received_pkts);
 		printf("    - processed packets: %" PRIu64 "\n",
 				out.stats.outb_processed_pkts);
+		printf("    - encrypted packets: %" PRIu64 "\n",
+				out.stats.outb_sec_applied_pkts);
+		printf("    - encrypted bytes: %" PRIu64 "\n",
+				out.stats.outb_sec_applied_bytes);
 		printf("  INBOUND:\n");
 		printf("    - received packets: %" PRIu64 "\n",
 				out.stats.inb_received_pkts);
 		printf("    - processed packets: %" PRIu64 "\n",
 				out.stats.inb_processed_pkts);
+		printf("    - decrypted packets: %" PRIu64 "\n",
+				out.stats.inb_sec_applied_pkts);
+		printf("    - decrypted bytes: %" PRIu64 "\n",
+				out.stats.inb_sec_applied_bytes);
 	} else
 		fprintf(stderr, "Failed to acquire IPSec global statistics");
 
