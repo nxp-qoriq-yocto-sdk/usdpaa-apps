@@ -40,6 +40,7 @@
 #include <unistd.h>
 #include <compat.h>
 #include <getopt.h>
+#include <stdbool.h>
 
 #define ctrl_dtls_dev_file "/dev/fsl-capwap-ctrl-dtls"
 #define data_dtls_dev_file "/dev/fsl-capwap-data-dtls"
@@ -58,11 +59,19 @@ int fd_data_n_dtls = -1;
 
 const char capwap_prompt[] = "capwap-tunnel> ";
 
+#define	CTRL_DTLS_TUNNEL	0x1
+#define	DATA_DTLS_TUNNEL	0x2
+#define	CTRL_NON_DTLS_TUNNEL	0x4
+#define	DATA_NON_DTLS_TUNNEL	0x8
+
 struct thread_args{
 	int is_silent;
 	int is_reflector;
 	int stats[4];
 	int quit;
+	int cpu_id;
+	uint8_t listen_tunnels;
+	pthread_t id;
 };
 
 void dump_hex(uint8_t *data, uint32_t count)
@@ -83,18 +92,32 @@ void rcv_thread(void *args)
 {
 	char rcv_packet[MAX_FRAME_SIZE];
 	fd_set readset;
+	cpu_set_t cpuset;
 	int len;
 	int max_fd;
 	int ret;
 	struct thread_args *t_args = args;
 
+	/* Set CPU affinity */
+	CPU_ZERO(&cpuset);
+	CPU_SET(t_args->cpu_id, &cpuset);
+	ret = pthread_setaffinity_np(t_args->id, sizeof(cpu_set_t), &cpuset);
+	if (ret) {
+		printf("thread_setaffinity_np failed on core%d", t_args->cpu_id);
+		exit(1);
+	}
+
 	/* listen DTLS and Non-DTLS port */
 	while(!t_args->quit) {
 		FD_ZERO(&readset);
-		FD_SET(fd_ctrl_dtls, &readset);
-		FD_SET(fd_ctrl_n_dtls, &readset);
-		FD_SET(fd_data_dtls, &readset);
-		FD_SET(fd_data_n_dtls, &readset);
+		if (t_args->listen_tunnels & CTRL_DTLS_TUNNEL)
+			FD_SET(fd_ctrl_dtls, &readset);
+		if (t_args->listen_tunnels & CTRL_NON_DTLS_TUNNEL)
+			FD_SET(fd_ctrl_n_dtls, &readset);
+		if (t_args->listen_tunnels & DATA_DTLS_TUNNEL)
+			FD_SET(fd_data_dtls, &readset);
+		if (t_args->listen_tunnels & DATA_NON_DTLS_TUNNEL)
+			FD_SET(fd_data_n_dtls, &readset);
 		max_fd = max(fd_ctrl_dtls, fd_ctrl_n_dtls);
 		max_fd = max(max_fd, fd_data_dtls);
 		max_fd = max(max_fd, fd_data_n_dtls);
@@ -182,38 +205,52 @@ void help(void)
 	printf("	-h	print help\n");
 	printf("	-r	reflector mode, when receive a new packets from a tunnel, then send it back to this tunnel\n");
 	printf("	-s	silent mode, when receive a new packets, only statistic it and don't print anyinfo\n");
+	printf("	-m	multicore mode, thread on core 0 listen control dtls and non-dtls tunnel, thread on core 1 listen data dtls and non-dtsl tunnel\n");
 }
 
 int main(int argc, char *argv[])
 {
 	int ret;
 	int i, cli_argc;
-	pthread_t thread_id;
 	int count, length;
 	char *cli, **cli_argv;
 	uint8_t frame[MAX_FRAME_SIZE];
-	struct thread_args t_args;
+	struct thread_args t_args[2];
 	int f;
+	long ncpus;
+	bool is_multi_core = false;
 	static const struct option options[] = {
 		{ .name = "help", .val = 'h' },
 		{ .name = "reflector", .val = 'r' },
 		{ .name = "silent", .val = 's' },
+		{ .name = "multicore", .val = 'm' },
 		{ 0 }
 	};
 
-	memset(&t_args, 0, sizeof(struct thread_args));
-	while ((f = getopt_long(argc, argv, "hrs", options, NULL)) != EOF)
+	memset(t_args, 0, sizeof(t_args));
+	while ((f = getopt_long(argc, argv, "hrsm", options, NULL)) != EOF)
 		switch(f) {
 		case 'h':
 			help();
 			return 0;
 		case 'r':
 			printf("Running in reflector mode\n");
-			t_args.is_reflector = 1;
+			t_args[0].is_reflector = 1;
+			t_args[1].is_reflector = 1;
 			break;
 		case 's':
 			printf("Running in silent mode\n");
-			t_args.is_silent = 1;
+			t_args[0].is_silent = 1;
+			t_args[1].is_silent = 1;
+			break;
+		case 'm':
+			/* Determine number of cores (==number of threads) */
+			ncpus = sysconf(_SC_NPROCESSORS_ONLN);
+			if (ncpus > 1) {
+				printf("Listen threads run on two Cores\n");
+				is_multi_core = true;
+			} else
+				printf("Can't use multicore mode on single Core\n");
 			break;
 		default:
 			fprintf(stderr, "Unknown option '%c'\n", f);
@@ -244,10 +281,37 @@ int main(int argc, char *argv[])
 		printf("open tunnel device error\n");
 		return 1;
 	}
-	ret = pthread_create(&thread_id,NULL,(void *)rcv_thread, (void *)&t_args);
-	if (ret != 0) {
-		printf("create receive thread error\n");
-		return 1;
+
+	if (is_multi_core) {
+		/* Two threads on two Cores */
+		t_args[0].cpu_id = 0;
+		t_args[0].listen_tunnels = CTRL_DTLS_TUNNEL |
+			CTRL_NON_DTLS_TUNNEL;
+		ret = pthread_create(&t_args[0].id, NULL, (void *)rcv_thread, (void *)&t_args[0]);
+		if (ret != 0) {
+			printf("create receive thread error\n");
+			return 1;
+		}
+		t_args[1].cpu_id = 1;
+		t_args[1].listen_tunnels = DATA_DTLS_TUNNEL |
+			DATA_NON_DTLS_TUNNEL;
+		ret = pthread_create(&t_args[1].id, NULL, (void *)rcv_thread, (void *)&t_args[1]);
+		if (ret != 0) {
+			printf("create receive thread error\n");
+			return 1;
+		}
+	} else {
+		/* Single thread on single Core */
+		t_args[0].cpu_id = 0;
+		t_args[0].listen_tunnels = CTRL_DTLS_TUNNEL |
+			DATA_DTLS_TUNNEL |
+			CTRL_NON_DTLS_TUNNEL |
+			DATA_NON_DTLS_TUNNEL;
+		ret = pthread_create(&t_args[0].id, NULL, (void *)rcv_thread, (void *)&t_args[0]);
+		if (ret != 0) {
+			printf("create receive thread error\n");
+			return 1;
+		}
 	}
 
 	/* Run the CLI loop */
@@ -302,10 +366,10 @@ int main(int argc, char *argv[])
 				print_help();
 			}
 		} else if(strcmp(cli_argv[0], "getstat") == 0) {
-			printf("Rx packets: control-dtls-tunnel:	%d\n", t_args.stats[0]);
-			printf("            control-n-dtls-tunnel:	%d\n", t_args.stats[2]);
-			printf("            data-dtls-tunnel:		%d\n", t_args.stats[1]);
-			printf("            data-n-dtls-tunnel:		%d\n", t_args.stats[3]);
+			printf("Rx packets: control-dtls-tunnel:	%d\n", t_args[0].stats[0] + t_args[1].stats[0]);
+			printf("            control-n-dtls-tunnel:	%d\n", t_args[0].stats[2] + t_args[1].stats[2]);
+			printf("            data-dtls-tunnel:		%d\n", t_args[0].stats[1] + t_args[1].stats[1]);
+			printf("            data-n-dtls-tunnel:		%d\n", t_args[0].stats[3] + t_args[1].stats[3]);
 			add_history(cli);
 		} else
 			print_help();
@@ -315,9 +379,16 @@ next_loop:
 		free(cli_argv);
 		free(cli);
 	}
-	t_args.quit = 1;
-	pthread_cancel(thread_id);
-	pthread_join(thread_id, NULL);
+	if (t_args[0].id) {
+		t_args[0].quit = 1;
+		pthread_cancel(t_args[0].id);
+		pthread_join(t_args[0].id, NULL);
+	}
+	if (t_args[1].id) {
+		t_args[1].quit = 1;
+		pthread_cancel(t_args[1].id);
+		pthread_join(t_args[1].id, NULL);
+	}
 	close(fd_ctrl_dtls);
 	close(fd_ctrl_n_dtls);
 	close(fd_data_dtls);
