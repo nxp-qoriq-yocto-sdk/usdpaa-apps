@@ -369,7 +369,7 @@ bm_free_buf(struct bman_pool *bp, const struct bm_buffer *buf, int count)
 		cpu_spin(PPAC_BACKOFF_CYCLES);
 }
 
-static inline void ppac_drop_frame(const struct qm_fd *fd)
+static void ppac_drop_frame(const struct qm_fd *fd)
 {
 	struct bm_buffer buf;
 #ifdef PPAC_ORDER_RESTORATION
