@@ -588,6 +588,48 @@ struct qm_fd *get_fd_base(void)
 	return fd;
 }
 
+static inline void dump_sg(struct qm_sg_entry *sgentry)
+{
+	dma_addr_t addr;
+	void *v;
+
+	if (!sgentry)
+		return;
+
+	hw_sg_to_cpu(sgentry);
+	addr = qm_sg_entry_get64(sgentry);
+
+	fprintf(stdout, "error: - SG Entry\n");
+	fprintf(stdout, "error:       - address	0x%"
+		PRIx64 "\n", addr);
+	fprintf(stdout, "error:       - F %d\n",
+		sgentry->final);
+	fprintf(stdout, "error:       - E %d\n",
+		sgentry->extension);
+	fprintf(stdout, "error:       - length %d\n",
+		sgentry->length);
+	fprintf(stdout, "error:       - bpid %d\n",
+		sgentry->bpid);
+	fprintf(stdout, "error:       - offset %d\n",
+		sgentry->offset);
+
+	v = __dma_mem_ptov(addr);
+	if (sgentry->extension) {
+		cpu_to_hw_sg(sgentry);
+		dump_sg((struct qm_sg_entry *)v);
+	} else {
+		hexdump((uint8_t *)v + sgentry->offset,
+			sgentry->length);
+
+		if (sgentry->final) {
+			cpu_to_hw_sg(sgentry);
+		} else {
+			cpu_to_hw_sg(sgentry);
+			dump_sg(++sgentry);
+		}
+	}
+}
+
 /*
  * brief	Prints the Frame Descriptor on Console
  * param[in]	struct qm_fd * Pointer to the Frame Descriptor
@@ -595,9 +637,7 @@ struct qm_fd *get_fd_base(void)
  */
 void print_frame_desc(struct qm_fd *frame_desc)
 {
-	uint8_t *v;
 	dma_addr_t addr;
-	uint32_t i;
 
 	fprintf(stdout, "error: Frame Description at address %p\n",
 		(void *)frame_desc);
@@ -657,49 +697,9 @@ void print_frame_desc(struct qm_fd *frame_desc)
 			addr = qm_fd_addr_get64(frame_desc);
 			sgentry = __dma_mem_ptov(addr);
 
-			hw_sg_to_cpu(sgentry);
-
 			fprintf(stdout, "error: - compound FD S/G list at 0x%"
 				PRIx64 "\n", addr);
-			addr = qm_sg_entry_get64(sgentry);
-			fprintf(stdout, "error: - SG Entry\n");
-			fprintf(stdout, "error:       - address	0x%"
-				PRIx64 "\n", addr);
-			fprintf(stdout, "error:       - F %d\n",
-				sgentry->final);
-			fprintf(stdout, "error:       - E %d\n",
-				sgentry->extension);
-			fprintf(stdout, "error:       - length %d\n",
-				sgentry->length);
-			fprintf(stdout, "error:       - bpid %d\n",
-				sgentry->bpid);
-			fprintf(stdout, "error:       - offset %d\n",
-				sgentry->offset);
-
-			v = __dma_mem_ptov(addr);
-			for (i = 0; i < sgentry->length + sgentry->offset; i++)
-				fprintf(stdout, "error: 0x%x\n", *v++);
-
-			sgentry++;
-			hw_sg_to_cpu(sgentry);
-			addr = qm_sg_entry_get64(sgentry);
-			fprintf(stdout, "error:    - Next SG Entry\n");
-			fprintf(stdout, "error:       - address	0x%"
-				PRIx64 "\n", addr);
-			fprintf(stdout, "error:       - F %d\n",
-				sgentry->final);
-			fprintf(stdout, "error:       - E %d\n",
-				sgentry->extension);
-			fprintf(stdout, "error:       - length %d\n",
-				sgentry->length);
-			fprintf(stdout, "error:       - bpid %d\n",
-				sgentry->bpid);
-			fprintf(stdout, "error:       - offset %d\n",
-				sgentry->offset);
-
-			v = __dma_mem_ptov(addr);
-			for (i = 0; i < sgentry->length + sgentry->offset; i++)
-				fprintf(stdout, "error: 0x%x\n", *v++);
+			dump_sg(sgentry);
 		}
 	}
 }
