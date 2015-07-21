@@ -40,7 +40,7 @@
  *   returned value is the number of bytes.
   */
 #define SNOW_JDESC_ENC_F8_F9_LEN	(sizeof(uint32_t) * \
-					(snow_jdesc_enc_f8_f9[0] &\
+					(be32_to_cpu(snow_jdesc_enc_f8_f9[0]) &\
 					 JDESC_LEN_MASK))
 
 /** Extracts th Job Descriptor length from the decrypt SNOW F8 + F9 job
@@ -49,7 +49,7 @@
 
   */
 #define SNOW_JDESC_DEC_F8_F9_LEN	(sizeof(uint32_t) * \
-					(snow_jdesc_dec_f8_f9[0] &\
+					(be32_to_cpu(snow_jdesc_dec_f8_f9[0]) &\
 					 JDESC_LEN_MASK))
 
 #ifdef AES_GCM_RAW_DESCRIPTOR

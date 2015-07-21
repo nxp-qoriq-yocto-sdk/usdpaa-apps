@@ -249,6 +249,19 @@ void init_rtv_hmac_sha1(struct test_param *crypto_info)
  */
 void init_rtv_snow_f8_f9(struct test_param *crypto_info)
 {
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+	int i;
+	
+	/* 
+	 * TODO: Need to put these descriptors in RTA, so that the ugly kludge
+	 * below is no longer needed.
+	 */
+	for (i = 0; i < ARRAY_SIZE(snow_jdesc_enc_f8_f9); i++)
+		snow_jdesc_enc_f8_f9[i] = cpu_to_be32(snow_jdesc_enc_f8_f9[i]);
+
+	for (i = 0; i < ARRAY_SIZE(snow_jdesc_dec_f8_f9); i++)
+		snow_jdesc_dec_f8_f9[i] = cpu_to_be32(snow_jdesc_dec_f8_f9[i]);
+#endif
 	strcpy(algorithm, "SNOW_F8_F9");
 	ref_test_vector.length =
 	    snow_enc_f8_f9_reference_length[crypto_info->test_set - 1];
@@ -383,7 +396,6 @@ void set_buf_size(struct test_param *crypto_info)
 	 */
 	p_rt->job_desc_buf_size = MAX(SNOW_JDESC_ENC_F8_F9_LEN,
 				      SNOW_JDESC_DEC_F8_F9_LEN);
-
 	switch (crypto_info->algo) {
 	case AES_CBC:
 	case TDES_CBC:
@@ -475,18 +487,6 @@ void *setup_sec_descriptor(bool mode, void *params)
 				       output buffer is provided inside
 				       compound frame */
 				 0); /* add_buf = 0 */
-
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-		for (i = 0; i < ARRAY_SIZE(snow_jdesc_enc_f8_f9); i++) {
-			snow_jdesc_enc_f8_f9[i] =
-				cpu_to_be32(snow_jdesc_enc_f8_f9[i]);
-		}
-
-		for (i = 0; i < ARRAY_SIZE(snow_jdesc_dec_f8_f9); i++) {
-			snow_jdesc_dec_f8_f9[i] =
-				cpu_to_be32(snow_jdesc_dec_f8_f9[i]);
-		}
-#endif
 	} else {
 		descriptor = setup_init_descriptor(mode, crypto_info);
 	}
@@ -725,7 +725,6 @@ void set_enc_buf(void *params, struct qm_fd fd[])
 			memcpy(in_buf, snow_jdesc_enc_f8_f9,
 			       crypto_info.rt.job_desc_buf_size);
 			in_buf += crypto_info.rt.job_desc_buf_size;
-			cpu_to_hw_sg(sgentry);
 		}
 		/* Copy the input plain-text data */
 		for (i = 0; i < crypto_info.buf_size; i++) {
