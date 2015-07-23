@@ -415,6 +415,17 @@ void validate_test(unsigned int itr_num, unsigned int buf_num,
  * return	0 - if status is correct (i.e. 0)
  *		-1 - if SEC returned an error status (i.e. non 0)
  */
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+/*
+ * For LE systems i.e. LS 1043, reading the frequency from /proc/cpuinfo
+ * is impossible, because it is not exported. Thus, return a hard-coded value.
+ */
+int get_cpu_frequency(uint64_t *cpu_freq)
+{
+	*cpu_freq = 1500;
+	return 0;
+}
+#else
 int get_cpu_frequency(uint64_t *cpu_freq)
 {
 	int err = 0;
@@ -444,3 +455,4 @@ int get_cpu_frequency(uint64_t *cpu_freq)
 
 	return err;
 }
+#endif
