@@ -141,13 +141,17 @@ void set_enc_buf(void *params, struct qm_fd fd[])
 
 		/* set output buffer and length */
 		sgentry = __dma_mem_ptov(addr);
+		hw_sg_to_cpu(sgentry);
 		sgentry->length = crypto_info->rt.output_buf_size;
 
 		out_buf = addr + sizeof(struct sg_entry_priv_t);
 		qm_sg_entry_set64(sgentry, out_buf);
 
+		cpu_to_hw_sg(sgentry);
+
 		/* set input buffer and length */
 		sgentry++;
+		hw_sg_to_cpu(sgentry);
 		sgentry->length = crypto_info->rt.input_buf_capacity;
 
 		in_buf = out_buf + crypto_info->rt.output_buf_size;
@@ -164,6 +168,7 @@ void set_enc_buf(void *params, struct qm_fd fd[])
 			else
 				for (i = 0; i < crypto_info->buf_size; i++)
 					buf[i] = plain_data++;
+		cpu_to_hw_sg(sgentry);
 	}
 }
 
@@ -190,6 +195,9 @@ void set_dec_buf(void *params, struct qm_fd fd[])
 		sg_out = __dma_mem_ptov(addr);
 		sg_in = sg_out + 1;
 
+		hw_sg_to_cpu(sg_out);
+		hw_sg_to_cpu(sg_in);
+
 		addr = qm_sg_addr(sg_out);
 		length = sg_out->length;
 		offset = sg_out->offset;
@@ -202,12 +210,15 @@ void set_dec_buf(void *params, struct qm_fd fd[])
 
 		qm_sg_entry_set64(sg_in, addr);
 		sg_in->length = length;
-		sg_in->offset = offset;		sg_in->bpid = bpid;
+		sg_in->offset = offset;
+		sg_in->bpid = bpid;
 
 		if (proto->set_dec_buf_cb) {
 			uint8_t *buf =  __dma_mem_ptov(addr);
 			proto->set_dec_buf_cb(&fd[ind], buf, crypto_info);
 		}
+		cpu_to_hw_sg(sg_in);
+		cpu_to_hw_sg(sg_out);
 	}
 }
 
@@ -486,9 +497,12 @@ int test_enc_match(void *params, struct qm_fd fd[])
 		addr = qm_fd_addr_get64(&fd[ind]);
 		sgentry = __dma_mem_ptov(addr);
 
+		hw_sg_to_cpu(sgentry);
+
 		addr = qm_sg_entry_get64(sgentry);
 		enc_buf = __dma_mem_ptov(addr);
 
+		cpu_to_hw_sg(sgentry);
 		if (proto->test_enc_match_cb) {
 			if (proto->test_enc_match_cb(ind, enc_buf, crypto_info))
 				goto err;
@@ -540,8 +554,12 @@ int test_dec_match(void *params, struct qm_fd fd[])
 		addr = qm_fd_addr_get64(&fd[ind]);
 		sgentry = __dma_mem_ptov(addr);
 
+		hw_sg_to_cpu(sgentry);
+
 		addr = qm_sg_entry_get64(sgentry);
 		dec_buf = __dma_mem_ptov(addr);
+
+		cpu_to_hw_sg(sgentry);
 
 		if (proto->test_dec_match_cb) {
 			if (proto->test_dec_match_cb(ind,

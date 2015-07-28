@@ -196,6 +196,7 @@ static void *create_descriptor(bool mode, void *params)
 * proper retrieval of PS.
 */
 				       false,
+				       SWAP_DESCRIPTOR,
 				       ref_test_vector->mac_hdr_len,
 				       ref_test_vector->pn,
 				       ref_test_vector->priority,
@@ -208,12 +209,15 @@ static void *create_descriptor(bool mode, void *params)
 * proper retrieval of PS.
 */
 				       false,
+				       SWAP_DESCRIPTOR,
 				       ref_test_vector->mac_hdr_len,
 				       ref_test_vector->pn,
 				       ref_test_vector->priority,
 				       &cipher_info);
 
-	prehdr_desc->prehdr.hi.word = shared_desc_len & SEC_PREHDR_SDLEN_MASK;
+	prehdr_desc->prehdr.hi.field.idlen =
+					shared_desc_len & SEC_PREHDR_SDLEN_MASK;
+	prehdr_desc->prehdr.hi.word = cpu_to_be32(prehdr_desc->prehdr.hi.word);
 
 	pr_debug("SEC %s shared descriptor:\n", proto->name);
 

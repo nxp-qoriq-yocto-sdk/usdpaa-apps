@@ -123,7 +123,7 @@ void macsec_set_pn_constant(uint32_t *shared_desc, int *shared_desc_len)
 	prg.current_instruction = 0;
 
 	for (i = 0; i < *shared_desc_len; i++) {
-		tmp = shared_desc[i];
+		tmp = be32_to_cpu(shared_desc[i]);
 		if ((tmp & CMD_MASK) == CMD_OPERATION)
 			op_idx = i;
 	}
@@ -149,6 +149,7 @@ void macsec_set_pn_constant(uint32_t *shared_desc, int *shared_desc_len)
 	/* RTA snippet code to update shared descriptor */
 	p->buffer = shared_desc;
 	p->current_pc = op_idx;
+	p->bswap = SWAP_DESCRIPTOR;
 
 	/*
 	 * Use CONTEXT2 to save the current value of PN. CONTEXT2 _should_ be
@@ -161,13 +162,14 @@ void macsec_set_pn_constant(uint32_t *shared_desc, int *shared_desc_len)
 	/* Wait for all bus transactions to finish before stopping. */
 	JUMP(p, 0, HALT_STATUS, ALL_TRUE, CALM);
 
-	/* erase context in shared desc header */
-	*shared_desc &= ~HDR_SAVECTX;
-
 	/* update length in shared desc header */
 	*shared_desc_len += extra_instr;
-	*shared_desc &= ~HDR_SD_LENGTH_MASK;
-	*shared_desc |= *shared_desc_len & HDR_SD_LENGTH_MASK;
+	tmp = be32_to_cpu(*shared_desc);
+	/* erase context in shared desc header */
+	tmp &= ~HDR_SAVECTX;
+	tmp &= ~HDR_SD_LENGTH_MASK;
+	tmp |= *shared_desc_len & HDR_SD_LENGTH_MASK;
+	*shared_desc = cpu_to_be32(tmp);
 
 	/* copy the rest of the instructions in buffer */
 	for (i = 0; i < save_lines; i++)
@@ -224,6 +226,7 @@ static void *create_descriptor(bool mode, void *params)
 			macsec_params->cipher_alg;
 	if (ENCRYPT == mode)
 		shared_desc_len = cnstr_shdsc_macsec_encap(shared_desc,
+					 SWAP_DESCRIPTOR,
 					 &cipher_info,
 					 ref_test_vector->sci,
 					 ref_test_vector->ethertype,
@@ -232,12 +235,16 @@ static void *create_descriptor(bool mode, void *params)
 
 	else
 		shared_desc_len = cnstr_shdsc_macsec_decap(shared_desc,
+					 SWAP_DESCRIPTOR,
 					 &cipher_info,
 					 ref_test_vector->sci,
 					 ref_test_vector->pn);
 	macsec_set_pn_constant(shared_desc, &shared_desc_len);
 
-	prehdr_desc->prehdr.hi.word = shared_desc_len & SEC_PREHDR_SDLEN_MASK;
+	prehdr_desc->prehdr.hi.field.idlen =
+					shared_desc_len & SEC_PREHDR_SDLEN_MASK;
+	prehdr_desc->prehdr.hi.word = cpu_to_be32(prehdr_desc->prehdr.hi.word);
+
 
 	pr_debug("SEC %s shared descriptor:\n", proto->name);
 

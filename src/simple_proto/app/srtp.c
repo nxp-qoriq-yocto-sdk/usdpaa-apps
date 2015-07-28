@@ -170,6 +170,7 @@ static void *create_descriptor(bool mode, void *params)
 	auth_info.key_type = RTA_DATA_IMM;
 	if (ENCRYPT == mode)
 		shared_desc_len = cnstr_shdsc_srtp_encap(shared_desc,
+				       SWAP_DESCRIPTOR,
 				       &auth_info,
 				       &cipher_info,
 				       ref_test_vector->n_tag,
@@ -177,6 +178,7 @@ static void *create_descriptor(bool mode, void *params)
 				       ref_test_vector->cipher_salt);
 	else
 		shared_desc_len = cnstr_shdsc_srtp_decap(shared_desc,
+				       SWAP_DESCRIPTOR,
 				       &auth_info,
 				       &cipher_info,
 				       ref_test_vector->n_tag,
@@ -184,7 +186,10 @@ static void *create_descriptor(bool mode, void *params)
 				       ref_test_vector->seqnum,
 				       ref_test_vector->cipher_salt);
 
-	prehdr_desc->prehdr.hi.word = shared_desc_len & SEC_PREHDR_SDLEN_MASK;
+	prehdr_desc->prehdr.hi.field.idlen =
+					shared_desc_len & SEC_PREHDR_SDLEN_MASK;
+	prehdr_desc->prehdr.hi.word = cpu_to_be32(prehdr_desc->prehdr.hi.word);
+
 
 	pr_debug("SEC %s shared descriptor:\n", proto->name);
 
