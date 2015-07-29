@@ -51,4 +51,11 @@
 #define MAX_NUM_BMAN_POOLS 64
 
 #define MAX_MQ_NAME_LEN		20
+
+#if __BYTE_ORDER == __ORDER_LITTLE_ENDIAN__
+#define SWAP_DESCRIPTOR		true
+#else
+#define SWAP_DESCRIPTOR		false
+#endif
+
 #endif	/* APP_COMMON__H */
