@@ -896,7 +896,7 @@ static t_Handle *get_ib_policy_verification_cc_nodes(void)
 
 static uint8_t init_dpa_ipsec_instance(void)
 {
-	int i, cls_td, ret;
+	int i, j, cls_td, ret;
 	t_Handle * cc = NULL;
 	enum rta_sec_era sec_era;
 	struct dpa_cls_tbl_params cls_tbl_params;
@@ -1002,22 +1002,39 @@ static uint8_t init_dpa_ipsec_instance(void)
 	TRACE("DEBUG: Creating OUTBOUND policy tables (per protocol):\n");
 	for (i = 0; i < DPA_IPSEC_MAX_SUPPORTED_PROTOS; i++) {
 		if (cc[i] != NULL) {
-			memset(&cls_tbl_params, 0, sizeof(cls_tbl_params));
-			cls_tbl_params.cc_node = cc[i];
-			cls_tbl_params.type = DPA_CLS_TBL_EXACT_MATCH;
-			cls_tbl_params.entry_mgmt = DPA_CLS_TBL_MANAGE_BY_REF;
-			cls_tbl_params.exact_match_params.entries_cnt =	get_out_pol_num(i);
-			cls_tbl_params.exact_match_params.key_size = get_out_key_size(i);
+			/* Check if this table was created before: */
+			j = i - 1;
+			while (j >= 0) {
+				if (cc[i] == cc[j])
+					break;
+				j--;
+			}
+			if (j >= 0)
+				/* The table already exists. Reuse it: */
+				ipsec_params->pre_sec_out_params.table[i].dpa_cls_td =
+					ipsec_params->pre_sec_out_params.table[j].dpa_cls_td;
+			else {
+				/* The table does not exist. Create it now: */
+				memset(&cls_tbl_params, 0, sizeof(cls_tbl_params));
+				cls_tbl_params.cc_node = cc[i];
+				cls_tbl_params.type = DPA_CLS_TBL_EXACT_MATCH;
+				cls_tbl_params.entry_mgmt = DPA_CLS_TBL_MANAGE_BY_REF;
+				cls_tbl_params.exact_match_params.entries_cnt =	get_out_pol_num(i);
+				cls_tbl_params.exact_match_params.key_size = get_out_key_size(i);
 
-			ret = dpa_classif_table_create(&cls_tbl_params, &cls_td);
-			if (ret < 0) {
-				fprintf(stderr, "Error creating outbound "
-					"classif table (%d),err %d\n", i, ret);
-				goto out_ib_pre_sec;
+				ret = dpa_classif_table_create(&cls_tbl_params, &cls_td);
+				if (ret < 0) {
+					fprintf(stderr, "Error creating outbound "
+						"classif table (%d),err %d\n", i, ret);
+					goto out_ib_pre_sec;
+				}
+
+				ipsec_params->pre_sec_out_params.table[i].dpa_cls_td = cls_td;
 			}
 
-			ipsec_params->pre_sec_out_params.table[i].dpa_cls_td = cls_td;
-			TRACE("\t- td[%d] = %d; ccnode=0x%x\n", i, cls_td, (unsigned)cc[i]);
+			TRACE("\t- td[%d] = %d; ccnode=0x%x\n", i,
+				ipsec_params->pre_sec_out_params.table[i].dpa_cls_td,
+				(unsigned)cc[i]);
 
 			if (i == DPA_IPSEC_PROTO_ICMP_IPV4 || i == DPA_IPSEC_PROTO_ICMP_IPV6)
 				ipsec_params->pre_sec_out_params.table[i].key_fields =
@@ -1041,8 +1058,20 @@ static uint8_t init_dpa_ipsec_instance(void)
 out_ob_pre_sec:
 	for (i = 0; i < DPA_IPSEC_MAX_SUPPORTED_PROTOS; i++)
 		if (ipsec_params->pre_sec_out_params.table[i].dpa_cls_td !=
-			DPA_OFFLD_DESC_NONE)
+			DPA_OFFLD_DESC_NONE) {
 			dpa_classif_table_free(ipsec_params->pre_sec_out_params.table[i].dpa_cls_td);
+			/*
+			 * Run ahead and check if this table is also used in some
+			 * other position in the array and mark it as released.
+			 */
+			j = i + 1;
+			while (j < DPA_IPSEC_MAX_SUPPORTED_PROTOS) {
+				if (ipsec_params->pre_sec_out_params.table[i].dpa_cls_td ==
+					ipsec_params->pre_sec_out_params.table[j].dpa_cls_td)
+					ipsec_params->pre_sec_out_params.table[j].dpa_cls_td = DPA_OFFLD_DESC_NONE;
+				j++;
+			}
+		}
 out_ib_post_sec:
 	/* TODO: free post_set table */
 
@@ -1179,7 +1208,7 @@ out:
 
 void nf_ipsec_cleanup(void)
 {
-	int i, ret;
+	int i, j, ret;
 	int id = init.nfapi_init_data.ipsec.dpa_ipsec_id;
 	struct dpa_ipsec_params * ipsec_params = &init.nfapi_init_data.ipsec.ipsec_params;
 
@@ -1199,10 +1228,23 @@ void nf_ipsec_cleanup(void)
 
 	for (i = 0; i < DPA_IPSEC_MAX_SUPPORTED_PROTOS; i++)
 		if (ipsec_params->pre_sec_out_params.table[i].dpa_cls_td !=
-							DPA_OFFLD_DESC_NONE)
+							DPA_OFFLD_DESC_NONE) {
 			dpa_classif_table_free(
 					ipsec_params->pre_sec_out_params.
 					table[i].dpa_cls_td);
+			/*
+                         * Run ahead and check if this table is also used in some
+                         * other position in the array and mark it as released.
+                         */
+                        j = i + 1;
+                        while (j < DPA_IPSEC_MAX_SUPPORTED_PROTOS) {
+                                if (ipsec_params->pre_sec_out_params.table[i].dpa_cls_td ==
+                                        ipsec_params->pre_sec_out_params.table[j].dpa_cls_td)
+                                        ipsec_params->pre_sec_out_params.table[j].dpa_cls_td = DPA_OFFLD_DESC_NONE;
+                                j++;
+                        }
+		}
+
 	/* TODO: remove bypass queue */
 	/* TODO: remove port queues */
 }
