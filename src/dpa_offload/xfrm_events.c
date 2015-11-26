@@ -74,6 +74,8 @@ static pthread_t tid;
 static unsigned next_in_ipsec_policy_id;
 static unsigned next_out_ipsec_policy_id;
 
+struct nf_ipsec_selector xfrm_to_nf_sel(const struct xfrm_selector *sel);
+
 static void xfrm_sig_handler(int signum)
 {
 	TRACE("xfrm signal handler catched signal %d\n", signum);
@@ -102,21 +104,22 @@ err:
 	return -1;
 }
 
-static int offload_sa(int dpa_ipsec_id, struct nf_sa *nf_sa, struct nf_pol *nf_pol)
+static int offload_sa(int dpa_ipsec_id, struct nf_sa *nf_sa,
+	enum nf_ipsec_direction dir, struct list_head *nf_pols)
 {
 	struct nf_ipsec_sa *sa_params = &nf_sa->sa_params;
 	struct xfrm_usersa_info *sa_info = &nf_sa->xfrm_sa_info;
 	struct xfrm_encap_tmpl *encap = &nf_sa->encap;
-	struct xfrm_selector *sel = &nf_pol->xfrm_pol_info.sel;
-	struct nf_ipsec_sa_selector sa_sel;
+	struct nf_ipsec_sa_selector sa_sel, *sa_sels;
 	struct nf_ipsec_sa_add_inargs sa_in;
 	struct nf_ipsec_sa_add_outargs sa_out;
-	int dir = nf_pol->xfrm_pol_info.dir;
-	int ret = 0;
+	struct list_head *l, *tmp;
+	struct nf_pol *nf_pol;
+	int i = 0;
 
 	if (!sa_params->crypto_params.cipher_key ||
 		!sa_params->crypto_params.auth_key)
-		return -1;
+		return -EINVAL;
 	hexdump(sa_params->crypto_params.cipher_key,
 		sa_params->crypto_params.cipher_key_len_bits);
 
@@ -124,146 +127,119 @@ static int offload_sa(int dpa_ipsec_id, struct nf_sa *nf_sa, struct nf_pol *nf_p
 		sa_params->crypto_params.auth_key_len_bits);
 
 	memset(&sa_in, 0, sizeof(struct nf_ipsec_sa_add_inargs));
-	sa_in.sa_params = sa_params;
 
-	if (dir == XFRM_POLICY_OUT)
-		sa_in.dir = NF_IPSEC_OUTBOUND;
-	else if (dir == XFRM_POLICY_IN)
-		sa_in.dir = NF_IPSEC_INBOUND;
-	else
-		return -EBADMSG;
+	sa_in.sa_params = sa_params;
+	sa_in.dir = dir;
 
 	sa_params->spi = sa_info->id.spi;
 	sa_params->protocol = IPPROTO_ESP;
 
 	memset(&sa_sel, 0, sizeof(sa_sel));
 
-	if (dir == XFRM_POLICY_OUT) {
+	switch (sa_info->family) {
+	case AF_INET:
+		sa_params->te_addr.src_ip.version = NF_IPV4;
+		sa_params->te_addr.src_ip.ipv4 = sa_info->saddr.a4;
+		sa_params->te_addr.dest_ip.version = NF_IPV4;
+		sa_params->te_addr.dest_ip.ipv4 = sa_info->id.daddr.a4;
+		break;
+	case AF_INET6:
+		memcpy(sa_params->te_addr.src_ip.ipv6.b_addr,
+				sa_info->saddr.a6,
+				sizeof(sa_info->saddr.a6));
+		memcpy(sa_params->te_addr.dest_ip.ipv6.b_addr,
+				sa_info->id.daddr.a6,
+				sizeof(sa_info->id.daddr.a6));
+		break;
+	default:
+		error(0, ENOSYS,
+			"Unsupported IPSec tunnel INet address family (%d)",
+			sa_info->family);
+		return -ENOSYS;
+	}
+
+	switch (dir) {
+	case NF_IPSEC_OUTBOUND:
 		if (sa_info->family == AF_INET) {
-			sa_params->te_addr.src_ip.version = NF_IPV4;
-			sa_params->te_addr.src_ip.ipv4 = sa_info->saddr.a4;
-			sa_params->te_addr.dest_ip.version = NF_IPV4;
-			sa_params->te_addr.dest_ip.ipv4 = sa_info->id.daddr.a4;
 			sa_params->outb.dscp = app_conf.outer_tos;
 
 			if (encap->encap_sport && encap->encap_dport)
 				sa_params->cmn_flags |=
-				   NF_IPSEC_SA_DO_UDP_ENCAP_FOR_NAT_TRAVERSAL;
+					NF_IPSEC_SA_DO_UDP_ENCAP_FOR_NAT_TRAVERSAL;
 
 			if (app_conf.ob_ecn) {
 				TRACE("Outbound ECN tunneling set\n");
-				sa_params->outb.dscp_handle = NF_IPSEC_DSCP_COPY;
+				sa_params->outb.dscp_handle =
+						NF_IPSEC_DSCP_COPY;
 			}
-		} else if (sa_info->family == AF_INET6) {
-			memcpy(sa_params->te_addr.src_ip.ipv6.b_addr,
-			       sa_info->saddr.a6, sizeof(sa_info->saddr.a6));
-			memcpy(sa_params->te_addr.dest_ip.ipv6.b_addr,
-			       sa_info->id.daddr.a6,
-			       sizeof(sa_info->id.daddr.a6));
-			sa_params->outb.dscp = (uint8_t)(0x6<<28);
-		}
+		} else if (sa_info->family == AF_INET6)
+			sa_params->outb.dscp = (uint8_t)(0x6 << 28);
 
 		if (encap->encap_sport && encap->encap_dport) {
 			sa_params->nat_info.src_port = encap->encap_sport;
 			sa_params->nat_info.dest_port = encap->encap_dport;
 		}
 		sa_params->outb.iv = NULL;
-		sa_sel.policy_id = next_out_ipsec_policy_id++;
-	} else if (dir == XFRM_POLICY_IN) {
+		break;
+	case NF_IPSEC_INBOUND:
 		if (encap->encap_sport && encap->encap_dport) {
 			sa_params->cmn_flags |=
-			   NF_IPSEC_SA_DO_UDP_ENCAP_FOR_NAT_TRAVERSAL;
+				NF_IPSEC_SA_DO_UDP_ENCAP_FOR_NAT_TRAVERSAL;
 
 			sa_params->nat_info.src_port = encap->encap_sport;
 			sa_params->nat_info.dest_port = encap->encap_dport;
 		}
 		if (sa_info->family == AF_INET) {
-			sa_params->te_addr.src_ip.version = NF_IPV4;
-			sa_params->te_addr.src_ip.ipv4 = sa_info->saddr.a4;
-			sa_params->te_addr.dest_ip.version = NF_IPV4;
-			sa_params->te_addr.dest_ip.ipv4 = sa_info->id.daddr.a4;
-
 			if (app_conf.ib_ecn) {
 				TRACE("Inbound ECN tunneling set\n");
 				sa_params->inb.flags =
 						NF_IPSEC_INB_SA_PROPOGATE_ECN;
 			}
-		} else if (sa_info->family == AF_INET6) {
-			memcpy(sa_params->te_addr.src_ip.ipv6.b_addr,
-			       sa_info->saddr.a6, sizeof(sa_info->saddr.a6));
-			memcpy(sa_params->te_addr.dest_ip.ipv6.b_addr,
-			       sa_info->id.daddr.a6,
-			       sizeof(sa_info->id.daddr.a6));
 		}
-
-		sa_sel.policy_id = next_in_ipsec_policy_id++;
+		break;
+	default:
+		error(0, EINVAL, "SA direction (%d)", dir);
+		return -EINVAL;
 	}
 
-	/* For now, we support only one selector */
-	sa_params->n_selectors = 1;
-	sa_params->selectors = &sa_sel;
-
-	/*
-	 * Temporary workaround until the support for multiple selectors is
-	 * added: update IPSec policy Id with the SA selector Id
-	 */
-	nf_pol->policy_id = sa_sel.policy_id;
-
-	if (sel->family == AF_INET) {
-		sa_sel.selector.version = NF_IPV4;
-		sa_sel.selector.src_ip4.type = NF_IPA_SUBNET;
-		sa_sel.selector.src_ip4.subnet.addr = sel->saddr.a4;
-		sa_sel.selector.src_ip4.subnet.prefix_len = sel->prefixlen_s;
-		sa_sel.selector.dest_ip4.type = NF_IPA_SUBNET;
-		sa_sel.selector.dest_ip4.subnet.addr = sel->daddr.a4;
-		sa_sel.selector.dest_ip4.subnet.prefix_len = sel->prefixlen_d;
-	} else {
-		sa_sel.selector.version = NF_IPV6;
-		sa_sel.selector.src_ip6.type = NF_IPA_SUBNET;
-		sa_sel.selector.dest_ip6.type = NF_IPA_SUBNET;
-		memcpy(sa_sel.selector.src_ip6.subnet.addr.b_addr,
-			sel->saddr.a6, sizeof(sel->saddr.a6));
-		memcpy(sa_sel.selector.dest_ip6.subnet.addr.b_addr,
-			sel->daddr.a6, sizeof(sel->daddr.a6));
-		sa_sel.selector.src_ip6.subnet.prefix_len = sel->prefixlen_s;
-		sa_sel.selector.dest_ip6.subnet.prefix_len = sel->prefixlen_d;
+	sa_sels = malloc(
+		sa_params->n_selectors * sizeof(struct nf_ipsec_sa_selector));
+	if(!sa_sels) {
+		printf("Could not allocate memory for SA selectors");
+		return -1;
 	}
 
-	sa_sel.selector.protocol = sel->proto;
-	if (sel->proto == IPPROTO_UDP || sel->proto == IPPROTO_TCP) {
-		sa_sel.selector.src_port.type = NF_L4_PORT_SINGLE;
-		sa_sel.selector.src_port.single.port = sel->sport;
-		sa_sel.selector.dest_port.type = NF_L4_PORT_SINGLE;
-		sa_sel.selector.dest_port.single.port = sel->dport;
-	} else if (sel->proto == IPPROTO_ICMP) {
-		/* we do not handle icmp code/type */
-		memset(&sa_sel.selector.src_port,
-			0, sizeof(sa_sel.selector.src_port));
-		memset(&sa_sel.selector.dest_port,
-			0, sizeof(sa_sel.selector.dest_port));
+	if (nf_sa->sa_params.n_selectors) {
+		list_for_each_safe(l, tmp, nf_pols)
+		{
+			nf_pol = (struct nf_pol *) l;
+			sa_sel.selector =
+				xfrm_to_nf_sel(&nf_pol->xfrm_pol_info.sel);
+			sa_sel.policy_id = nf_pol->policy_id;
+			sa_sels[i++] = sa_sel;
+		}
+		sa_params->selectors = sa_sels;
 	}
 
 	/* Store information needed to perform remove */
-	nf_sa->dir = sa_in.dir;
 	nf_sa->spi = sa_in.sa_params->spi;
 	nf_sa->protocol = sa_in.sa_params->protocol;
-	if (sa_info->family == AF_INET)
+	if (sa_info->family == AF_INET) {
 		nf_sa->dest_ip = sa_params->te_addr.dest_ip;
-	else
-		memcpy(&nf_sa->dest_ip,
-			&sa_params->te_addr.dest_ip, sizeof(nf_sa->dest_ip));
+	} else {
+		memcpy(&nf_sa->dest_ip, &sa_params->te_addr.dest_ip,
+				sizeof(nf_sa->dest_ip));
+	}
 
-	ret = nf_ipsec_sa_add(dpa_ipsec_id, &sa_in, 0, &sa_out, NULL);
-	return ret;
+	return nf_ipsec_sa_add(dpa_ipsec_id, &sa_in, 0, &sa_out, NULL);
 }
 
-static inline int offload_policy(struct nf_ipsec_policy *pol_params,
-			struct xfrm_selector *sel, enum nf_ipsec_direction dir)
+static int offload_policy(struct nf_ipsec_policy *pol_params,
+	struct xfrm_selector *sel, enum nf_ipsec_direction dir)
 {
 	struct nf_ipsec_spd_add_inargs spd_add_in;
 	struct nf_ipsec_spd_add_outargs	spd_add_out;
 	struct nf_ipsec_selector spd_sel;
-	int ret = 0;
 
 	memset(&spd_add_in, 0, sizeof(spd_add_in));
 
@@ -284,40 +260,12 @@ static inline int offload_policy(struct nf_ipsec_policy *pol_params,
 	spd_add_in.spd_params.n_selectors = 1;
 	spd_add_in.spd_params.selectors = &spd_sel;
 
-	if (sel->family == AF_INET) {
-		spd_sel.version = NF_IPV4;
-		spd_sel.src_ip4.type = NF_IPA_SUBNET;
-		spd_sel.src_ip4.subnet.addr = sel->saddr.a4;
-		spd_sel.src_ip4.subnet.prefix_len = sel->prefixlen_s;
-		spd_sel.dest_ip4.type = NF_IPA_SUBNET;
-		spd_sel.dest_ip4.subnet.addr = sel->daddr.a4;
-		spd_sel.dest_ip4.subnet.prefix_len = sel->prefixlen_d;
-	} else if (sel->family == AF_INET6) {
-		spd_sel.version = NF_IPV6;
-		spd_sel.src_ip6.type = NF_IPA_SUBNET;
-		spd_sel.dest_ip6.type = NF_IPA_SUBNET;
-		memcpy(spd_sel.src_ip6.subnet.addr.b_addr,
-			sel->saddr.a6, sizeof(sel->saddr.a6));
-		memcpy(spd_sel.dest_ip6.subnet.addr.b_addr,
-			sel->daddr.a6, sizeof(sel->daddr.a6));
-		spd_sel.src_ip6.subnet.prefix_len = sel->prefixlen_s;
-		spd_sel.dest_ip6.subnet.prefix_len = sel->prefixlen_d;
-	}
-	spd_sel.protocol = sel->proto;
+	spd_sel = xfrm_to_nf_sel(sel);
 
-	if (sel->proto == IPPROTO_UDP || sel->proto == IPPROTO_TCP) {
-		spd_sel.src_port.type = NF_L4_PORT_SINGLE;
-		spd_sel.src_port.single.port = sel->sport;
-		spd_sel.dest_port.type = NF_L4_PORT_SINGLE;
-		spd_sel.dest_port.single.port = sel->dport;
-	} else if (sel->proto == IPPROTO_ICMP) {
-		/* we do not handle icmp code/type */
-		memset(&spd_sel.src_port, 0, sizeof(spd_sel.src_port));
-		memset(&spd_sel.dest_port, 0, sizeof(spd_sel.dest_port));
-	}
+	/* Store selector for later use */
+	pol_params->selectors = &spd_sel;
 
-	ret = nf_ipsec_spd_add(0, &spd_add_in, 0, &spd_add_out, 0);
-	return ret;
+	return nf_ipsec_spd_add(0, &spd_add_in, 0, &spd_add_out, 0);
 }
 
 void dump_xfrm_sa_info(struct xfrm_usersa_info *sa_info)
@@ -431,50 +379,7 @@ static void trace_nf_policy(struct nf_pol *nf_pol)
 				daddr, dst, sizeof(dst)));
 }
 
-static inline int do_offload(int dpa_ipsec_id, struct nf_sa *nf_sa,
-			struct nf_pol *nf_pol)
-{
-	int ret = 0;
-	if (nf_sa->sa_init[nf_pol->xfrm_pol_info.dir] == false) {
-		ret = offload_sa(dpa_ipsec_id, nf_sa, nf_pol);
-		if (ret < 0) {
-			fprintf(stderr, "offload_sa failed , ret %d\n", ret);
-			free(nf_sa->sa_params.crypto_params.cipher_key);
-			free(nf_sa->sa_params.crypto_params.auth_key);
-			list_del(&nf_sa->list);
-			free(nf_sa);
-			return ret;
-		}
-		nf_sa->sa_init[nf_pol->xfrm_pol_info.dir] = true;
-		TRACE("%s SA: \n", (nf_pol->xfrm_pol_info.dir ==
-			XFRM_POLICY_OUT) ? "OUT" : "IN ");
-#ifdef ENABLE_TRACE
-		dump_xfrm_sa_info(&nf_sa->xfrm_sa_info);
-#endif
-	}
-
-	if (nf_pol->xfrm_pol_info.dir == XFRM_POLICY_IN) {
-		nf_pol->dir = NF_IPSEC_INBOUND;
-		return ret;
-	} else
-		nf_pol->dir = NF_IPSEC_OUTBOUND;
-
-	nf_pol->pol_params.policy_id = nf_pol->policy_id;
-
-	ret = offload_policy(&nf_pol->pol_params,
-			&nf_pol->xfrm_pol_info.sel, nf_pol->dir);
-	if (ret < 0) {
-		fprintf(stderr, "offload_policy failed, ret %d\n", ret);
-		list_del(&nf_pol->list);
-		free(nf_pol);
-		return ret;
-	}
-	trace_nf_policy(nf_pol);
-	return ret;
-}
-
-static inline struct nf_sa
-*find_nf_sa(struct xfrm_usersa_id *usersa_id)
+static inline struct nf_sa *find_nf_sa(struct xfrm_usersa_id *usersa_id)
 {
 	struct list_head *l, *tmp;
 	struct nf_sa *nf_sa = NULL;
@@ -498,8 +403,8 @@ static inline struct nf_sa
 	return NULL;
 }
 
-static inline struct nf_sa
-*find_nf_sa_byaddr(xfrm_address_t *saddr, xfrm_address_t *daddr)
+static inline struct nf_sa *find_nf_sa_byaddr(xfrm_address_t *saddr,
+		xfrm_address_t *daddr)
 {
 	struct list_head *l, *tmp;
 	struct nf_sa *nf_sa = NULL;
@@ -522,8 +427,8 @@ static inline struct nf_sa
 	return NULL;
 }
 
-static inline struct nf_pol
-*find_nf_pol_bysel_list(struct xfrm_selector *sel, struct list_head *pol_list)
+static inline struct nf_pol *find_nf_pol_bysel_list(struct xfrm_selector *sel,
+		struct list_head *pol_list)
 {
 
 	struct list_head *p, *tmp;
@@ -538,8 +443,8 @@ static inline struct nf_pol
 	return NULL;
 }
 
-static inline void
-set_offload_dir(struct nf_sa *nf_sa, int dir, struct list_head **pol_list)
+static inline void set_offload_dir(struct nf_sa *nf_sa, int dir,
+		struct list_head **pol_list)
 {
 	if (dir == XFRM_POLICY_OUT) {
 		*pol_list = &nf_sa->out_pols;
@@ -548,8 +453,8 @@ set_offload_dir(struct nf_sa *nf_sa, int dir, struct list_head **pol_list)
 	}
 }
 
-static inline struct nf_pol
-*find_nf_pol_bysel(struct xfrm_selector *sel, int dir)
+static inline struct nf_pol *find_nf_pol_bysel(struct xfrm_selector *sel,
+		int dir)
 {
 	struct list_head *l, *pol_list;
 	struct nf_sa *nf_sa;
@@ -593,53 +498,71 @@ static inline void move_pols_to_pending(struct list_head *pol_list)
 	}
 }
 
-static inline int flush_nf_sa(void)
+static void flush_nf_sa(void)
 {
 	struct nf_ipsec_sa_del_inargs sa_del_in;
 	struct nf_ipsec_sa_del_outargs sa_del_out;
-	struct list_head *l, *ltmp;
-	struct list_head *p, *ptmp;
+	struct list_head *l, *ltmp, *pol, *poltmp;
 	struct nf_sa *nf_sa;
-	struct nf_pol *nf_pol;
-	int ret  = 0;
+	int i = 0, ret = 0;
+
 	list_for_each_safe(l, ltmp, &nf_sa_list) {
 		nf_sa = (struct nf_sa *)l;
 
 		memset(&sa_del_in, 0, sizeof(sa_del_in));
 		memset(&sa_del_out, 0, sizeof(sa_del_out));
 
-		sa_del_in.dir = nf_sa->dir;
+		move_pols_to_pending(&nf_sa->in_pols);
+
+		list_for_each_safe(pol, poltmp, &nf_sa->out_pols) {
+			struct nf_ipsec_spd_del_inargs	spd_in;
+			struct nf_ipsec_spd_del_outargs	spd_out;
+			struct nf_pol *nf_pol = (struct nf_pol *)pol;
+
+			memset(&spd_in, 0, sizeof(spd_in));
+			spd_in.policy_id = nf_pol->policy_id;
+			spd_in.dir	 = nf_pol->dir;
+
+			ret = nf_ipsec_spd_del(0, &spd_in, 0,
+					&spd_out, NULL);
+			if (ret != 0)
+				error(0, ret, "Failed to remove OUTBOUND SPD rule");
+		}
+		move_pols_to_pending(&nf_sa->out_pols);
+
+		sa_del_in.dir = NF_IPSEC_INBOUND;
 		sa_del_in.sa_id.spi = nf_sa->spi;
 		sa_del_in.sa_id.protocol = nf_sa->protocol;
 		sa_del_in.sa_id.dest_ip = nf_sa->dest_ip;
 
-		ret = nf_ipsec_sa_del(0,
-				&sa_del_in,
-				0,
-				&sa_del_out,
-				NULL);
-		/* TODO - err handling */
-		list_for_each_safe(p, ptmp, &nf_sa->in_pols) {
-			nf_pol = (struct nf_pol *)p;
-			list_del(&nf_pol->list);
-			list_add_tail(&nf_pol->list, &pending_sp);
-		}
-
-		list_for_each_safe(p, ptmp, &nf_sa->out_pols) {
-			nf_pol = (struct nf_pol *)p;
-			list_del(&nf_pol->list);
-			list_add_tail(&nf_pol->list, &pending_sp);
-		}
 		list_del(&nf_sa->list);
 		free(nf_sa->sa_params.crypto_params.auth_key);
 		free(nf_sa->sa_params.crypto_params.cipher_key);
 		free(nf_sa);
 
+		/* Delete INBOUND SA: */
+		ret = nf_ipsec_sa_del(0,
+				&sa_del_in,
+				0,
+				&sa_del_out,
+				NULL);
+		if (ret)
+			error(0, -ret, "Delete INBOUND SA #%d", i);
+
+		/* Delete OUTBOUND SA: */
+		sa_del_in.dir = NF_IPSEC_OUTBOUND;
+		ret = nf_ipsec_sa_del(0,
+				&sa_del_in,
+				0,
+				&sa_del_out,
+				NULL);
+		if (ret)
+			error(0, -ret, "Delete OUTBOUND SA #%d", i);
+		i++;
 	}
-	return ret;
 }
 
-static inline int flush_nf_policies(void)
+static int flush_nf_policies(void)
 {
 	struct nf_ipsec_spd_del_inargs	spd_in;
 	struct nf_ipsec_spd_del_outargs	spd_out;
@@ -791,11 +714,16 @@ static int process_notif_sa(const struct nlmsghdr	*nh, int len,
 	struct xfrm_encap_tmpl encap;
 	struct nf_ipsec_sa sa_params;
 	struct nf_sa *nf_sa;
-	struct list_head *l, *tmp, *pol_list = NULL;
+	struct list_head *l, *tmp;
 	struct nf_pol *nf_pol;
 	struct nlattr *na;
 	int msg_len = 0;
 	int ret = 0;
+
+	struct nf_ipsec_sa_del_inargs sa_in;
+	struct nf_ipsec_sa_del_outargs sa_out;
+	int n_out_pols = 0, n_in_pols = 0;
+	struct nf_ipsec_sa_selector sa_sel;
 
 	if (nh->nlmsg_type == XFRM_MSG_NEWSA)
 		TRACE("XFRM_MSG_NEWSA\n");
@@ -842,31 +770,72 @@ static int process_notif_sa(const struct nlmsghdr	*nh, int len,
 	}
 
 	nf_sa->encap = encap;
-	nf_sa->sa_init[XFRM_POLICY_IN]  = false;
-	nf_sa->sa_init[XFRM_POLICY_OUT] = false;
 	INIT_LIST_HEAD(&nf_sa->list);
 	INIT_LIST_HEAD(&nf_sa->in_pols);
 	INIT_LIST_HEAD(&nf_sa->out_pols);
 	list_add_tail(&nf_sa->list, &nf_sa_list);
+
+
+	memset(&sa_sel, 0, sizeof(sa_sel));
+	memset(&sa_in, 0, sizeof(struct nf_ipsec_sa_del_inargs));
 
 	/*for each matching policy perform offloading*/
 	list_for_each_safe(l, tmp, &pending_sp) {
 		nf_pol = (struct nf_pol *)l;
 		if (!match_pol_tmpl(nf_pol, nf_sa))
 			continue;
-		/*Policy found,
-		offload SA and add policy*/
-		set_offload_dir(nf_sa,
-			nf_pol->xfrm_pol_info.dir, &pol_list);
-		assert(pol_list);
 
-		ret = do_offload(dpa_ipsec_id, nf_sa, nf_pol);
-		if (ret < 0)
-			return ret;
-
-		/* move policy from pending to nf_sa list */
+		/* Policy found */
 		list_del(&nf_pol->list);
-		list_add_tail(&nf_pol->list, pol_list);
+
+		/*
+		 * Get selector for this policy and add to the corresponding
+		 * list
+		 */
+		if (nf_pol->xfrm_pol_info.dir == XFRM_POLICY_OUT) {
+			list_add_tail(&nf_pol->list, &nf_sa->out_pols);
+			n_out_pols++;
+		}
+		else if (nf_pol->xfrm_pol_info.dir == XFRM_POLICY_IN) {
+			list_add_tail(&nf_pol->list, &nf_sa->in_pols);
+			n_in_pols++;
+		}
+	}
+	/* finally offload SA */
+
+	/* INBOUND: */
+	nf_sa->sa_params.n_selectors = 0;
+	ret = offload_sa(dpa_ipsec_id, nf_sa, NF_IPSEC_INBOUND, NULL);
+	if (ret < 0) {
+		error(0, -ret, "offload_sa");
+		/* Free up resources */
+		free(nf_sa->sa_params.crypto_params.cipher_key);
+		free(nf_sa->sa_params.crypto_params.auth_key);
+		list_del(&nf_sa->list);
+		free(nf_sa);
+		return ret;
+	}
+
+	/* OUTBOUND: */
+	nf_sa->sa_params.n_selectors = n_out_pols;
+	ret = offload_sa(dpa_ipsec_id, nf_sa, NF_IPSEC_OUTBOUND,
+							&nf_sa->out_pols);
+	if (ret < 0) {
+		error(0, -ret, "offload_sa");
+		/* Free up resources and also delete SA */
+		free(nf_sa->sa_params.crypto_params.cipher_key);
+		free(nf_sa->sa_params.crypto_params.auth_key);
+		list_del(&nf_sa->list);
+		free(nf_sa);
+
+		/* Remove inbound SA: */
+		sa_in.dir = NF_IPSEC_INBOUND;
+		sa_in.sa_id.spi = nf_sa->spi;
+		sa_in.sa_id.protocol = nf_sa->protocol;
+		sa_in.sa_id.dest_ip = nf_sa->dest_ip;
+		nf_ipsec_sa_del(dpa_ipsec_id, &sa_in, 0, &sa_out, NULL);
+
+		return ret;
 	}
 
 	return 0;
@@ -878,7 +847,7 @@ static int process_del_sa(const struct nlmsghdr *nh)
 	struct nf_ipsec_sa_del_outargs sa_del_out;
 	struct xfrm_usersa_id *usersa_id;
 	struct nf_sa *nf_sa;
-	struct list_head *pols;
+	struct list_head *pol, *poltmp;
 	int ret = 0;
 
 	TRACE("XFRM_MSG_DELSA\n");
@@ -887,48 +856,53 @@ static int process_del_sa(const struct nlmsghdr *nh)
 
 	nf_sa = find_nf_sa(usersa_id);
 	if (unlikely(!nf_sa))
-		goto out_del_sa;
+		return 0;
 
-	if (nf_sa->dir == NF_IPSEC_INBOUND) {
-		pols = &nf_sa->in_pols;
-	} else {
-		pols = &nf_sa->out_pols;
+	/* remove move all policies on pending */
+	move_pols_to_pending(&nf_sa->in_pols);
+	list_for_each_safe(pol, poltmp, &nf_sa->out_pols) {
+		struct nf_ipsec_spd_del_inargs	spd_in;
+		struct nf_ipsec_spd_del_outargs	spd_out;
+		struct nf_pol *nf_pol = (struct nf_pol *)pol;
+
+		memset(&spd_in, 0, sizeof(spd_in));
+		spd_in.policy_id = nf_pol->policy_id;
+		spd_in.dir	 = nf_pol->dir;
+
+		ret = nf_ipsec_spd_del(0, &spd_in, 0,
+				&spd_out, NULL);
+		if (ret != 0)
+			error(0, ret, "Failed to remove OUTBOUND SPD rule");
 	}
+	move_pols_to_pending(&nf_sa->out_pols);
 
-	/* remove dpa policies and move all policies on pending */
 	memset(&sa_del_in, 0, sizeof(sa_del_in));
 	memset(&sa_del_out, 0, sizeof(sa_del_out));
 
-	sa_del_in.dir = nf_sa->dir;
+	/* Remove INBOUND SA: */
+	sa_del_in.dir = NF_IPSEC_INBOUND;
 	sa_del_in.sa_id.spi = nf_sa->spi;
 	sa_del_in.sa_id.protocol = nf_sa->protocol;
 	sa_del_in.sa_id.dest_ip = nf_sa->dest_ip;
 
-	ret = nf_ipsec_sa_del(0, &sa_del_in, 0, &sa_del_out, NULL);
-	if (ret != -EINPROGRESS && ret != 0) {
-		fprintf(stderr, "Failed to remove nf_sa, ret %d\n", ret);
-		return ret;
-	}
-
-	move_pols_to_pending(pols);
 	free(nf_sa->sa_params.crypto_params.cipher_key);
 	free(nf_sa->sa_params.crypto_params.auth_key);
 	list_del(&nf_sa->list);
 	free(nf_sa);
 
-out_del_sa:
-	return 0;
-}
+	ret = nf_ipsec_sa_del(0, &sa_del_in, 0, &sa_del_out, NULL);
+	if (ret != -EINPROGRESS && ret != 0) {
+		error(0, -ret, "Remove INBOUND SA");
+		return -ret;
+	}
 
-static int process_flush_sa(void)
-{
-	int ret = 0;
+	/* Remove OUTBOUND SA: */
+	sa_del_in.dir = NF_IPSEC_OUTBOUND;
 
-	ret = flush_nf_sa();
-	if (ret) {
-		fprintf(stderr, "An error occured during sa flushing %d\n",
-			ret);
-		return ret;
+	ret = nf_ipsec_sa_del(0, &sa_del_in, 0, &sa_del_out, NULL);
+	if (ret != -EINPROGRESS && ret != 0) {
+		error(0, -ret, "Remove OUTBOUND SA");
+		return -ret;
 	}
 
 	return 0;
@@ -1028,14 +1002,14 @@ static inline int policy_is_for_us(xfrm_address_t *tun_addr, int af)
 static int process_new_policy(const struct nlmsghdr	*nh,
 			      int			dpa_ipsec_id)
 {
-
 	struct xfrm_userpolicy_info *pol_info;
-	struct list_head *pols = NULL;
 	struct nf_sa *nf_sa;
 	struct nf_pol *nf_pol, *pol;
 	int af;
 	xfrm_address_t saddr, daddr, addr;
 	int ret = 0;
+	struct nf_ipsec_sa_mod_inargs sa_in;
+	struct nf_ipsec_sa_mod_outargs sa_out;
 
 	memset(&addr, 0, sizeof(addr));
 
@@ -1120,6 +1094,29 @@ skip_policy_is_for_us:
 	nf_pol->sa_daddr = daddr;
 	nf_pol->sa_family = af;
 
+	switch (nf_pol->xfrm_pol_info.dir) {
+	case XFRM_POLICY_IN:
+		nf_pol->dir = NF_IPSEC_INBOUND;
+		nf_pol->policy_id = next_in_ipsec_policy_id++;
+		nf_pol->pol_params.policy_id = nf_pol->policy_id;
+		break;
+	case XFRM_POLICY_OUT:
+		nf_pol->dir = NF_IPSEC_OUTBOUND;
+		nf_pol->policy_id = next_out_ipsec_policy_id++;
+		nf_pol->pol_params.policy_id = nf_pol->policy_id;
+
+		/* Add policy to SPD */
+		ret = offload_policy(&nf_pol->pol_params,
+			&nf_pol->xfrm_pol_info.sel, nf_pol->dir);
+		if (ret < 0) {
+			fprintf(stderr, "offload_policy failed, ret %d\n", ret);
+			list_del(&nf_pol->list);
+			free(nf_pol);
+			return ret;
+		}
+		break;
+	}
+
 	nf_sa = find_nf_sa_byaddr(&saddr, &daddr);
 
 	/* SA not found, add pol on pending */
@@ -1128,13 +1125,31 @@ skip_policy_is_for_us:
 		goto out_new_pol;
 	}
 
-	set_offload_dir(nf_sa, pol_info->dir, &pols);
+	switch (nf_pol->dir) {
+	case NF_IPSEC_INBOUND:
+		list_add_tail(&nf_pol->list, &nf_sa->in_pols);
+		break;
+	case NF_IPSEC_OUTBOUND:
+		/* Get selector for this policy and add it to SA */
+		sa_in.flags = NF_IPSEC_SA_ADD_SEL;
+		sa_in.dir = NF_IPSEC_OUTBOUND;
+		sa_in.sa_id.dest_ip = nf_sa->dest_ip;
+		sa_in.sa_id.protocol = nf_sa->protocol;
+		sa_in.sa_id.spi = nf_sa->spi;
+		sa_in.selector.policy_id = nf_pol->policy_id;
 
-	ret = do_offload(dpa_ipsec_id, nf_sa, nf_pol);
-	if (ret < 0)
-		return ret;
+		sa_in.selector.selector =
+				xfrm_to_nf_sel(&nf_pol->xfrm_pol_info.sel);
 
-	list_add(&nf_pol->list, pols);
+		ret = nf_ipsec_sa_mod(dpa_ipsec_id, &sa_in, 0, &sa_out, NULL);
+		if (ret) {
+			error(0, -ret, "Update OUTBOUND SA selectors");
+			return ret;
+		}
+
+		list_add_tail(&nf_pol->list, &nf_sa->out_pols);
+		break;
+	}
 
 out_new_pol:
 	return 0;
@@ -1222,7 +1237,7 @@ static int resolve_xfrm_notif(const struct nlmsghdr	*nh,
 		break;
 	case XFRM_MSG_FLUSHSA:
 		TRACE("XFRM_MSG_FLUSHSA\n");
-		ret = process_flush_sa();
+		flush_nf_sa();
 		break;
 	case XFRM_MSG_UPDPOLICY:
 		TRACE("XFRM_MSG_UPDPOLICY\n");
@@ -1382,4 +1397,65 @@ int teardown_xfrm_msg_loop(void)
 	free(xfrm_data);
 
 	return 0;
+}
+
+struct nf_ipsec_selector xfrm_to_nf_sel(const struct xfrm_selector *sel)
+{
+	struct nf_ipsec_selector nf_sel;
+
+	memset(&nf_sel, 0, sizeof(struct nf_ipsec_selector));
+
+	switch (sel->family) {
+	case AF_INET:
+		nf_sel.version = NF_IPV4;
+		nf_sel.src_ip4.type = NF_IPA_SUBNET;
+		nf_sel.src_ip4.subnet.addr = sel->saddr.a4;
+		nf_sel.src_ip4.subnet.prefix_len = sel->prefixlen_s;
+		nf_sel.dest_ip4.type = NF_IPA_SUBNET;
+		nf_sel.dest_ip4.subnet.addr = sel->daddr.a4;
+		nf_sel.dest_ip4.subnet.prefix_len = sel->prefixlen_d;
+		break;
+	case AF_INET6:
+		nf_sel.version = NF_IPV6;
+		nf_sel.src_ip6.type = NF_IPA_SUBNET;
+		nf_sel.dest_ip6.type = NF_IPA_SUBNET;
+		memcpy(nf_sel.src_ip6.subnet.addr.b_addr,
+			sel->saddr.a6, sizeof(sel->saddr.a6));
+		memcpy(nf_sel.dest_ip6.subnet.addr.b_addr,
+			sel->daddr.a6, sizeof(sel->daddr.a6));
+		nf_sel.src_ip6.subnet.prefix_len = sel->prefixlen_s;
+		nf_sel.dest_ip6.subnet.prefix_len = sel->prefixlen_d;
+		break;
+	default:
+		error(0, ENOSYS,
+			"Unsupported IPSec policy INet address family (%d)",
+			sel->family);
+		return nf_sel;
+	}
+
+	nf_sel.protocol = sel->proto;
+
+	switch (sel->proto) {
+	case IPPROTO_UDP:
+	case IPPROTO_TCP:
+		nf_sel.src_port.type = NF_L4_PORT_SINGLE;
+		nf_sel.src_port.single.port = sel->sport;
+		nf_sel.dest_port.type = NF_L4_PORT_SINGLE;
+		nf_sel.dest_port.single.port = sel->dport;
+		break;
+	case IPPROTO_ICMP:
+		/* we do not handle icmp code/type */
+		memset(&nf_sel.src_port,
+			0, sizeof(nf_sel.src_port));
+		memset(&nf_sel.dest_port,
+			0, sizeof(nf_sel.dest_port));
+		break;
+	default:
+		error(0, ENOSYS,
+			"Unsupported IPSec policy protocol (%d)",
+			sel->proto);
+		return nf_sel;
+	}
+
+	return nf_sel;
 }

@@ -71,8 +71,6 @@ struct nf_sa {
 	struct xfrm_usersa_info xfrm_sa_info;
 	/* NAT-T info */
 	struct xfrm_encap_tmpl encap;
-	/* Direction required when perform remove */
-	enum nf_ipsec_direction dir;
 	/* SPI required when perform remove */
 	uint32_t spi;
 	/* Protocol required when perform remove */
@@ -81,8 +79,6 @@ struct nf_sa {
 	struct nf_ip_addr dest_ip;
 	/* IPSec NF API sa parameters */
 	struct nf_ipsec_sa sa_params;
-	/* Store if SA is initialization */
-	bool sa_init[2];
 	/* policies list for inbound sa */
 	struct list_head in_pols;
 	/* policies list for outbound sa */

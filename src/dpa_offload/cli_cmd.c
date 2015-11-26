@@ -209,13 +209,11 @@ static int sa_stats(int argc, char *argv[])
 		return -ENOENT;
 	}
 	printf("SA #%d parameters:\n", id);
-	if (sa->dir == NF_IPSEC_INBOUND)
-		printf("\tdir IN\n");
-	else
-		printf("\tdir OUT\n");
 	dump_xfrm_sa_info(&sa->xfrm_sa_info);
 
-	in.dir = sa->dir;
+	printf("SA #%d statistics:\nINBOUND:\n", id);
+	/* Display INBOUND statistics: */
+	in.dir = NF_IPSEC_INBOUND;
 	in.operation = NF_IPSEC_SA_GET_EXACT;
 	in.sa_id.spi = sa->spi;
 	in.sa_id.dest_ip = sa->dest_ip;
@@ -227,8 +225,19 @@ static int sa_stats(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	printf("SA #%d statistics:\n", id);
 	printf("\tReceived:  %" PRIu64 " packets\n", out.stats.received_pkts);
+	printf("\tProcessed: %" PRIu64 " packets (%" PRIu64 " bytes)\n\n",
+		out.stats.processed_pkts, out.stats.processed_bytes);
+
+	/* Display OUTBOUND statistics: */
+	in.dir = NF_IPSEC_OUTBOUND;
+
+	memset(&out, 0, sizeof(out));
+	ret = nf_ipsec_sa_get(0, &in, 0, &out, NULL);
+	if (ret)
+		return ret;
+
+	printf("OUTBOUND:\n\tReceived:  %" PRIu64 " packets\n", out.stats.received_pkts);
 	printf("\tProcessed: %" PRIu64 " packets (%" PRIu64 " bytes)\n\n",
 		out.stats.processed_pkts, out.stats.processed_bytes);
 
@@ -250,10 +259,7 @@ static int list_sa(int argc __attribute__ ((unused)),
 
 	list_for_each(l, &nf_sa_list) {
 		nf_sa = (struct nf_sa *)l;
-		if (nf_sa->dir == NF_IPSEC_INBOUND)
-			printf("%u)\tdir IN\n", idx++);
-		else
-			printf("%u)\tdir OUT\n", idx++);
+		printf("%d)\n", idx++);
 		dump_xfrm_sa_info(&nf_sa->xfrm_sa_info);
 	}
 	printf("\n");
