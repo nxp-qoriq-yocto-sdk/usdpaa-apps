@@ -36,7 +36,7 @@
 #include <fsl_fman.h>
 
 /* Hash function used by the hash table based on FMan CRC64 */
-inline uint32_t crc64_hash_function(uint8_t *key, uint32_t size)
+static inline uint32_t crc64_hash_function(uint8_t *key, uint32_t size)
 {
 	uint64_t hashval = 0;
 	hashval = fman_crc64_init();

@@ -83,11 +83,11 @@ struct protocol_info *(*register_protocol[])(void) = {
 static void set_crypto_cbs(struct test_cb *crypto_cb);
 int get_num_of_iterations(void *params);
 void set_num_of_iterations(void *params, unsigned int itr_num);
-inline int get_num_of_buffers(void *params);
-inline enum test_mode get_test_mode(void *params);
-inline uint8_t requires_authentication(void *);
-inline long get_num_of_cpus(void);
-inline pthread_barrier_t *get_thread_barrier(void);
+static inline int get_num_of_buffers(void *params);
+static inline enum test_mode get_test_mode(void *params);
+static inline uint8_t requires_authentication(void *);
+static inline long get_num_of_cpus(void);
+static inline pthread_barrier_t *get_thread_barrier(void);
 int register_modules(void);
 void unregister_modules(void);
 
