@@ -42,6 +42,7 @@
 #include <linux/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include <netinet/in.h>
 #include <linux/netlink.h>
 #include <linux/xfrm.h>
 #include <sched.h>
