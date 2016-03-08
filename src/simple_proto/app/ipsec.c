@@ -200,7 +200,7 @@ static int init_ref_test_vector_ipsec(struct test_param *crypto_info)
 	e_pdb->options = PDBOPTS_ESP_IPHDRSRC | PDBOPTS_ESP_INCIPHDR |
 			 PDBOPTS_ESP_TUNNEL;
 	e_pdb->seq_num = ipsec_test_seq_num[proto_offset];
-	memcpy(&e_pdb->cbc.iv[2], ipsec_test_iv[proto_offset], rtv->iv_size);
+	memcpy(&e_pdb->cbc.iv[8], ipsec_test_iv[proto_offset], rtv->iv_size);
 	e_pdb->spi = ipsec_test_spi[proto_offset];
 	e_pdb->ip_hdr_len = ipsec_opt_ip_hdr_len[proto_offset];
 	memcpy(e_pdb->ip_hdr, ipsec_opt_ip_hdr[proto_offset],
@@ -214,8 +214,9 @@ static int init_ref_test_vector_ipsec(struct test_param *crypto_info)
 			__func__);
 		goto err;
 	}
-	d_pdb->ip_hdr_len = ipsec_opt_ip_hdr_len[proto_offset];
-	d_pdb->options = PDBOPTS_ESP_OUTFMT | PDBOPTS_ESP_TUNNEL;
+	d_pdb->options = (ipsec_opt_ip_hdr_len[proto_offset] <<
+			  PDBHDRLEN_ESP_DECAP_SHIFT) & PDBHDRLEN_MASK;
+	d_pdb->options |= PDBOPTS_ESP_OUTFMT | PDBOPTS_ESP_TUNNEL;
 	d_pdb->seq_num = ipsec_test_seq_num[proto_offset];
 	rtv->d_pdb = d_pdb;
 

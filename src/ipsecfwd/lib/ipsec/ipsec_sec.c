@@ -125,7 +125,8 @@ void *create_encapsulation_sec_descriptor(struct ipsec_tunnel_t *sa,
 		return NULL;
 	}
 	memset(pdb, 0, sizeof(struct ipsec_encap_pdb) + sizeof(struct iphdr));
-	pdb->ip_nh = next_header;
+	pdb->options = (next_header << PDBNH_ESP_ENCAP_SHIFT) &
+			PDBNH_ESP_ENCAP_MASK;
 	if (sa->is_esn)
 		pdb->seq_num_ext_hi = (uint32_t)(sa->seq_num >> 32);
 	pdb->seq_num = (uint32_t)(sa->seq_num);
@@ -136,7 +137,7 @@ void *create_encapsulation_sec_descriptor(struct ipsec_tunnel_t *sa,
 		       PDBOPTS_ESP_UPDATE_CSUM;
 	if (sa->is_esn)
 		pdb->options |= PDBOPTS_ESP_ESN;
-	pdb->hmo = PDBHMO_ESP_ENCAP_DTTL;
+	pdb->options |= PDBHMO_ESP_ENCAP_DTTL;
 	memcpy(pdb->ip_hdr, ip_header, pdb->ip_hdr_len);
 
 	cipher.algtype = sa->ealg->alg_type;
@@ -269,7 +270,8 @@ void
 	if (sa->is_esn)
 		pdb.seq_num_ext_hi = (uint32_t)(sa->seq_num >> 32);
 	pdb.seq_num = (uint32_t)(sa->seq_num);
-	pdb.ip_hdr_len = sizeof(struct iphdr);
+	pdb.options = (sizeof(struct iphdr) << PDBHDRLEN_ESP_DECAP_SHIFT) &
+			PDBHDRLEN_MASK;
 
 	pdb.options = PDBOPTS_ESP_TUNNEL | PDBOPTS_ESP_OUTFMT |
 		      PDBOPTS_ESP_ARSNONE;
