@@ -290,8 +290,8 @@ static void *create_descriptor(bool mode, void *params)
 	auth_info.key_type = RTA_DATA_IMM;
 
 	shared_desc_len = cnstr_shdsc_authenc(shared_desc,
+					      true,
 					      false,
-					      1,
 					      &cipher_info,
 					      &auth_info,
 					      rtv->ivlen,

@@ -185,10 +185,9 @@ static int init_ref_test_vector_tls10(struct test_param *crypto_info)
 		return -ENOMEM;
 	}
 	e_pdb->tls_enc.type = tls_test_type[proto_offset];
-	memcpy(e_pdb->tls_enc.version, tls_test_version[proto_offset],
+	memcpy(e_pdb->tls_enc.version, &tls_test_version[proto_offset],
 	       TLS_VERSION_SIZE);
-	memcpy(e_pdb->tls_enc.seq_num, tls_test_seq_num[proto_offset],
-	       TLS_SEQNUM_SIZE);
+	e_pdb->tls_enc.seq_num = tls_test_seq_num[proto_offset];
 	memcpy(e_pdb->iv, tls_test_iv[proto_offset], AES_BLOCK_SIZE);
 	rtv->e_pdb = (uint8_t *)e_pdb;
 
@@ -200,8 +199,7 @@ static int init_ref_test_vector_tls10(struct test_param *crypto_info)
 			__func__);
 		return -ENOMEM;
 	}
-	memcpy(d_pdb->tls_dec.seq_num, tls_test_seq_num[proto_offset],
-	       TLS_SEQNUM_SIZE);
+	d_pdb->tls_dec.seq_num = tls_test_seq_num[proto_offset];
 	memcpy(d_pdb->iv, tls_test_iv[proto_offset], AES_BLOCK_SIZE);
 	rtv->d_pdb = (uint8_t *)d_pdb;
 
@@ -286,6 +284,7 @@ static void *create_descriptor(bool mode, void *params)
 			rtv->protcmd.optype = OP_TYPE_ENCAP_PROTOCOL;
 			shared_desc_len = cnstr_shdsc_tls(shared_desc,
 					true,
+					false,
 					rtv->e_pdb,
 					sizeof(struct tls_block_pdb),
 					&rtv->protcmd,
@@ -295,6 +294,7 @@ static void *create_descriptor(bool mode, void *params)
 			rtv->protcmd.optype = OP_TYPE_DECAP_PROTOCOL;
 			shared_desc_len = cnstr_shdsc_tls(shared_desc,
 					true,
+					false,
 					rtv->d_pdb,
 					sizeof(struct tls_block_pdb),
 					&rtv->protcmd,

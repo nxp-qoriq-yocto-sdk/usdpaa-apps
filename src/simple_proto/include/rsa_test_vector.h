@@ -97,8 +97,6 @@ struct rsa_ref_vector_s {
 	uint8_t *tmp2;
 	uint8_t *e_pdb;
 	uint8_t *d_pdb;
-	uint32_t e_pdb_size;
-	uint32_t d_pdb_size;
 	struct protcmd protocmd;
 };
 
