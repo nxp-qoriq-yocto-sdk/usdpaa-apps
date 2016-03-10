@@ -123,10 +123,10 @@ static int validate_test_set(struct test_param crypto_info);
 void set_crypto_cbs(struct test_cb *crypto_cb, struct test_param crypto_info);
 inline int get_num_of_iterations(void *stuff);
 void set_num_of_iterations(void *stuff, unsigned int itr_num);
-inline int get_num_of_buffers(void *stuff);
-inline enum test_mode get_test_mode(void *stuff);
-inline uint8_t requires_authentication(void *);
-inline long get_num_of_cpus(void);
-inline pthread_barrier_t *get_thread_barrier(void);
+static inline int get_num_of_buffers(void *stuff);
+static inline enum test_mode get_test_mode(void *stuff);
+static inline uint8_t requires_authentication(void *);
+static inline long get_num_of_cpus(void);
+static inline pthread_barrier_t *get_thread_barrier(void);
 
 #endif /* __SIMPLE_CRYPTO_H */
