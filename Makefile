@@ -50,6 +50,14 @@ ifneq (distclean,$(MAKECMDGOALS))
     $(ARCH)_SPEC_CFLAGS	 := -mcpu=e500mc64 -m64
     $(ARCH)_SPEC_LDFLAGS :=
     LIBDIR               ?= lib64
+ else ifeq (arm64,$(ARCH))
+  CROSS_COMPILE        ?= aarch64-linux-gnu-
+      $(ARCH)_SPEC_DEFINE  := CONFIG_ARM64
+      $(ARCH)_SPEC_INC_PATH:=
+      $(ARCH)_SPEC_LIB_PATH:=
+      $(ARCH)_SPEC_CFLAGS  := -g
+      $(ARCH)_SPEC_LDFLAGS :=
+      LIBDIR               ?= lib64
   else
    $(error "ARCH not defined.")
  endif
