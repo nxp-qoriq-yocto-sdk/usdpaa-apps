@@ -169,14 +169,14 @@ static void *create_descriptor(bool mode, void *params)
 	auth_info.key_enc_flags = 0;
 	auth_info.key_type = RTA_DATA_IMM;
 	if (ENCRYPT == mode)
-		shared_desc_len = cnstr_shdsc_srtp_encap(shared_desc, false,
+		shared_desc_len = cnstr_shdsc_srtp_encap(shared_desc,
 				       &auth_info,
 				       &cipher_info,
 				       ref_test_vector->n_tag,
 				       ref_test_vector->roc,
 				       ref_test_vector->cipher_salt);
 	else
-		shared_desc_len = cnstr_shdsc_srtp_decap(shared_desc, false,
+		shared_desc_len = cnstr_shdsc_srtp_decap(shared_desc,
 				       &auth_info,
 				       &cipher_info,
 				       ref_test_vector->n_tag,

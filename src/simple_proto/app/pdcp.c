@@ -420,7 +420,6 @@ static void *create_descriptor(bool mode, void *params)
 * proper retrieval of PS.
 */
 						       true,
-						       false,
 						       hfn_val,
 						       ref_test_vector->bearer,
 						       ref_test_vector->dir,
@@ -436,7 +435,6 @@ static void *create_descriptor(bool mode, void *params)
 * proper retrieval of PS.
 */
 						       true,
-						       false,
 						       hfn_val,
 						       ref_test_vector->bearer,
 						       ref_test_vector->dir,
@@ -455,7 +453,6 @@ static void *create_descriptor(bool mode, void *params)
 * proper retrieval of PS.
 */
 						       true,
-						       false,
 						       ref_test_vector->sns,
 						       hfn_val,
 						       ref_test_vector->bearer,
@@ -471,7 +468,6 @@ static void *create_descriptor(bool mode, void *params)
 * proper retrieval of PS.
 */
 						       true,
-						       false,
 						       ref_test_vector->sns,
 						       hfn_val,
 						       ref_test_vector->bearer,
@@ -490,7 +486,6 @@ static void *create_descriptor(bool mode, void *params)
 * proper retrieval of PS.
 */
 						   true,
-						   false,
 						   &auth_info);
 		break;
 

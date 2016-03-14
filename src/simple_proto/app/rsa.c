@@ -118,6 +118,7 @@ static int init_rsa_enc_pdb(struct test_param *crypto_info, int mode)
 		rsa_enc.f_len = rtv->f_len;
 		memcpy(rtv->e_pdb, &rsa_enc,
 		       sizeof(struct rsa_encrypt_pdb_64b));
+		rtv->e_pdb_size = sizeof(struct rsa_encrypt_pdb_64b);
 	} else {
 		struct rsa_encrypt_pdb rsa_enc;
 		rtv->e_pdb = malloc(sizeof(struct rsa_encrypt_pdb));
@@ -132,6 +133,7 @@ static int init_rsa_enc_pdb(struct test_param *crypto_info, int mode)
 		rsa_enc.n_ref = lower_32_bits(__dma_mem_vtop(rtv->n));
 		rsa_enc.f_len = rtv->f_len;
 		memcpy(rtv->e_pdb, &rsa_enc, sizeof(struct rsa_encrypt_pdb));
+		rtv->e_pdb_size = sizeof(struct rsa_encrypt_pdb);
 	}
 
 	return 0;
@@ -171,6 +173,7 @@ static int init_rsa_dec_form1_pdb(struct test_param *crypto_info, int mode)
 		rsa_dec.n_ref_low = lower_32_bits(__dma_mem_vtop(rtv->n));
 		memcpy(rtv->d_pdb, &rsa_dec,
 		       sizeof(struct rsa_dec_pdb_form1_64b));
+		rtv->d_pdb_size = sizeof(struct rsa_dec_pdb_form1_64b);
 	} else {
 		struct rsa_dec_pdb_form1 rsa_dec;
 		rtv->d_pdb = malloc(sizeof(struct rsa_dec_pdb_form1));
@@ -184,6 +187,7 @@ static int init_rsa_dec_form1_pdb(struct test_param *crypto_info, int mode)
 		rsa_dec.d_ref = lower_32_bits(__dma_mem_vtop(rtv->d));
 		rsa_dec.n_ref = lower_32_bits(__dma_mem_vtop(rtv->n));
 		memcpy(rtv->d_pdb, &rsa_dec, sizeof(struct rsa_dec_pdb_form1));
+		rtv->d_pdb_size = sizeof(struct rsa_dec_pdb_form1);
 	}
 
 	return 0;
@@ -245,6 +249,7 @@ static int init_rsa_dec_form2_pdb(struct test_param *crypto_info, int mode)
 				  (rtv->p_len);
 		memcpy(rtv->d_pdb, &rsa_dec,
 		       sizeof(struct rsa_dec_pdb_form2_64b));
+		rtv->d_pdb_size = sizeof(struct rsa_dec_pdb_form2_64b);
 	} else {
 		struct rsa_dec_pdb_form2 rsa_dec;
 		rtv->d_pdb = malloc(sizeof(struct rsa_dec_pdb_form2));
@@ -263,6 +268,7 @@ static int init_rsa_dec_form2_pdb(struct test_param *crypto_info, int mode)
 		rsa_dec.trailer = (rtv->q_len << RSA_DEC2_Q_LEN_SHIFT) |
 				  (rtv->p_len);
 		memcpy(rtv->d_pdb, &rsa_dec, sizeof(struct rsa_dec_pdb_form2));
+		rtv->d_pdb_size = sizeof(struct rsa_dec_pdb_form2);
 	}
 
 	return 0;
@@ -334,6 +340,7 @@ static int init_rsa_dec_form3_pdb(struct test_param *crypto_info, int mode)
 				  (rtv->p_len);
 		memcpy(rtv->d_pdb, &rsa_dec,
 		       sizeof(struct rsa_dec_pdb_form3_64b));
+		rtv->d_pdb_size = sizeof(struct rsa_dec_pdb_form3_64b);
 	} else {
 		struct rsa_dec_pdb_form3 rsa_dec;
 		rtv->d_pdb = malloc(sizeof(struct rsa_dec_pdb_form3));
@@ -354,6 +361,7 @@ static int init_rsa_dec_form3_pdb(struct test_param *crypto_info, int mode)
 		rsa_dec.trailer = (rtv->q_len << RSA_DEC3_Q_LEN_SHIFT) |
 				  (rtv->p_len);
 		memcpy(rtv->d_pdb, &rsa_dec, sizeof(struct rsa_dec_pdb_form3));
+		rtv->d_pdb_size = sizeof(struct rsa_dec_pdb_form3);
 	}
 
 	return 0;
@@ -458,8 +466,8 @@ static void *create_descriptor(bool mode, void *params)
  * proper retrieval of PS.
  */
 						  true,
-						  false,
 						  rtv->e_pdb,
+						  rtv->e_pdb_size,
 						  &rtv->protocmd);
 	} else {
 		rtv->protocmd.protid = OP_PCLID_RSADECRYPT;
@@ -480,8 +488,8 @@ static void *create_descriptor(bool mode, void *params)
  * proper retrieval of PS.
  */
 						  true,
-						  false,
 						  rtv->d_pdb,
+						  rtv->d_pdb_size,
 						  &rtv->protocmd);
 	}
 

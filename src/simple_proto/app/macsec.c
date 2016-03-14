@@ -223,7 +223,7 @@ static void *create_descriptor(bool mode, void *params)
 	cipher_info.algtype =
 			macsec_params->cipher_alg;
 	if (ENCRYPT == mode)
-		shared_desc_len = cnstr_shdsc_macsec_encap(shared_desc, false,
+		shared_desc_len = cnstr_shdsc_macsec_encap(shared_desc,
 					 &cipher_info,
 					 ref_test_vector->sci,
 					 ref_test_vector->ethertype,
@@ -231,7 +231,7 @@ static void *create_descriptor(bool mode, void *params)
 					 ref_test_vector->pn);
 
 	else
-		shared_desc_len = cnstr_shdsc_macsec_decap(shared_desc, false,
+		shared_desc_len = cnstr_shdsc_macsec_decap(shared_desc,
 					 &cipher_info,
 					 ref_test_vector->sci,
 					 ref_test_vector->pn);

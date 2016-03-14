@@ -85,17 +85,18 @@ struct tls_ref_vector_s {
 };
 
 /* TLS10 AES-CBC & HMAC-SHA1 test vectors were taken from Cedar */
-static uint64_t tls_test_seq_num[] = {
+static uint8_t *tls_test_seq_num[] = {
 	/* TLS10 AES-CBC & HMAC-SHA1 */
-	0x6B5054FE5032B165ll,
+	(uint8_t[]){0x6B, 0x50, 0x54, 0xFE, 0x50, 0x32, 0xB1, 0x65},
+
 };
 
 static uint8_t tls_test_type[] = {
 	0x17,
 };
 
-static uint16_t tls_test_version[] = {
-	0x0301,
+static uint8_t *tls_test_version[] = {
+	(uint8_t[]){0x03, 0x01},
 };
 
 static uint8_t *tls_test_iv[] = {

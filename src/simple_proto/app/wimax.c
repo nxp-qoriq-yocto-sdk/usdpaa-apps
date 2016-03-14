@@ -296,13 +296,13 @@ static void *create_descriptor(bool mode, void *params)
 	cipher_info.key_enc_flags = 0;
 	cipher_info.key_type = RTA_DATA_IMM;
 	if (ENCRYPT == mode)
-		shared_desc_len = cnstr_shdsc_wimax_encap(shared_desc, false,
+		shared_desc_len = cnstr_shdsc_wimax_encap(shared_desc,
 					ref_test_vector->encap_opts,
 					ref_test_vector->pn,
 					ref_test_vector->protinfo,
 					&cipher_info);
 	else
-		shared_desc_len = cnstr_shdsc_wimax_decap(shared_desc, false,
+		shared_desc_len = cnstr_shdsc_wimax_decap(shared_desc,
 					ref_test_vector->decap_opts,
 					ref_test_vector->pn,
 					ref_test_vector->ar_len,
