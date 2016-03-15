@@ -33,6 +33,8 @@ bin_PROGRAMS = reflector
 
 dist_DATA = SOURCE_THIS
 
+AM_CFLAGS := -I$(TOP_LEVEL)/include
+
 reflector_SOURCES := reflector.c
 reflector_LDADD := usdpaa_ppac usdpaa_syscfg
 reflector_LDFLAGS := -lusdpaa_qbman -lusdpaa_fman -lusdpaa_dma_mem -lusdpaa_of \

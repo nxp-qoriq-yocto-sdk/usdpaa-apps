@@ -154,7 +154,7 @@ static inline uint32_t compute_decap_hash(in_addr_t saddr,
 	result = fman_crc64_compute_32bit(daddr, result);
 	result = fman_crc64_compute_32bit(spi, result);
 
-	return (uint32_t) result & RC_HASH_MASK;
+	return (uint32_t) cpu_to_be64(result) & RC_HASH_MASK;
 }
 
 /**
@@ -171,7 +171,7 @@ static inline uint32_t compute_rc_hash(in_addr_t saddr,
 	result = fman_crc64_init();
 	result = fman_crc64_compute_32bit(saddr, result);
 	result = fman_crc64_compute_32bit(daddr, result);
-	return (uint32_t) result & RC_HASH_MASK;
+	return (uint32_t) cpu_to_be64(result) & RC_HASH_MASK;
 }
 
 #define RC_BUCKET_INDEX(__ip_notes) \

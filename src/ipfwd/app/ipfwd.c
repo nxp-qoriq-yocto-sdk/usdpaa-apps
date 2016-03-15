@@ -175,9 +175,9 @@ static int ipfwd_add_route(const struct app_ctrl_op_info *route_info)
 				pr_err("Route cache entry updated\n");
 				rc_free_entry(stack.rc, entry);
 			}
-			daddr += 1;
+			daddr += be32_to_cpu(1);
 		}
-		saddr += 1;
+		saddr += be32_to_cpu(1);
 	}
 
 	pr_debug("ipfwd_add_route: Exit\n");
@@ -680,7 +680,7 @@ static int ppam_interface_init(struct ppam_interface *p,
 	p->ifnum = fif->fman_idx * 100 + iface;
 	p->mtu = ETHERMTU;
 	p->header_len = ETHER_HDR_LEN;
-	p->mask = IN_CLASSC_NET;
+	p->mask = htonl(IN_CLASSC_NET);
 
 	p->num_tx_fqids = num_tx_fqs;
 	p->tx_fqids = malloc(p->num_tx_fqids * sizeof(*p->tx_fqids));
@@ -751,7 +751,7 @@ static inline void ppam_rx_default_cb(struct ppam_rx_default *p,
 
 	notes = __dma_mem_ptov(qm_fd_addr(&dqrr->fd));
 	eth_hdr = (void *)notes + dqrr->fd.offset;
-	if (eth_hdr->ether_type == ETHERTYPE_ARP) {
+	if (ntohs(eth_hdr->ether_type) == ETHERTYPE_ARP) {
 		notes->dqrr = dqrr;
 		arp_handler(_if, notes, eth_hdr);
 	} else

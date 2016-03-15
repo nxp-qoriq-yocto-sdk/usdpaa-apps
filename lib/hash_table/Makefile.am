@@ -31,4 +31,6 @@
 
 lib_LIBRARIES = hash_table
 
+AM_CFLAGS := -I$(TOP_LEVEL)/include
+
 hash_table_SOURCES := hash_table.c

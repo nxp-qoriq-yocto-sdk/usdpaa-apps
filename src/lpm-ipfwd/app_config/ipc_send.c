@@ -462,7 +462,7 @@ static error_t parse_route_add_opt(int key, char *arg, struct argp_state *state)
 
 	case 'd':
 		inet_aton(arg, &in_addr);
-		route_info->ip_info.dst_ipaddr = in_addr.s_addr;
+		route_info->ip_info.dst_ipaddr = htonl(in_addr.s_addr);
 		g_mndtr_param |= IPC_CTRL_PARAM_BMASK_DESTIP;
 		pr_debug("\nkey = %c; value = %s", key, arg);
 		break;
@@ -481,7 +481,7 @@ static error_t parse_route_add_opt(int key, char *arg, struct argp_state *state)
 	case 'g':
 
 		inet_aton(arg, &in_addr);
-		route_info->ip_info.gw_ipaddr = in_addr.s_addr;
+		route_info->ip_info.gw_ipaddr = htonl(in_addr.s_addr);
 		g_mndtr_param |= IPC_CTRL_PARAM_BMASK_GWIP;
 		pr_debug("\nkey = %c; value = %s", key, arg);
 		break;
@@ -513,7 +513,7 @@ static error_t parse_arp_add_opt(int key, char *arg, struct argp_state *state)
 
 	case 's':
 		inet_aton(arg, &in_addr);
-		route_info->ip_info.src_ipaddr = in_addr.s_addr;
+		route_info->ip_info.src_ipaddr = htonl(in_addr.s_addr);
 		g_mndtr_param |= IPC_CTRL_PARAM_BMASK_ARP_IPADDR;
 		break;
 
@@ -572,7 +572,7 @@ static error_t parse_intf_conf_opt(int key, char *arg, struct argp_state *state)
 
 	case 'a':
 		inet_aton(arg, &in_addr);
-		route_info->ip_info.intf_conf.ip_addr = in_addr.s_addr;
+		route_info->ip_info.intf_conf.ip_addr = htonl(in_addr.s_addr);
 		g_mndtr_param |= IPC_CTRL_PARAM_BMASK_IPADDR;
 		break;
 

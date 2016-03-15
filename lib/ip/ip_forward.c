@@ -41,9 +41,13 @@ enum IP_STATUS ip_forward(const struct ppam_rx_hash *ctxt,
 	dev = notes->neighbor->dev;
 	if (likely(ip_hdr->ttl > 1)) {
 		ip_hdr->ttl -= 1;
-		ip_hdr->check += 0x100;
+		ip_hdr->check += ADD_CHECKSUM_VALUE;
+#if __BYTE_ORDER == __BIG_ENDIAN
 		if (unlikely((ip_hdr->check & 0xff00) == 0))
 			ip_hdr->check += 0x1;
+#endif
+		if (unlikely(ip_hdr->check == 0xffff))
+                          ip_hdr->check = 0x0;
 
 	} else {
 #ifdef STATS_TBD

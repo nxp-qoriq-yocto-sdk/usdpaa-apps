@@ -702,9 +702,15 @@ static inline void ether_header_swap(struct ether_header *prot_eth)
 	a = overlay[0];
 	b = overlay[1];
 	c = overlay[2];
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 	overlay[0] = (b << 16) | (c >> 16);
 	overlay[1] = (c << 16) | (a >> 16);
 	overlay[2] = (a << 16) | (b >> 16);
+#else
+	overlay[0] = (b >> 16) | (c << 16);
+	overlay[1] = (c >> 16) | (a << 16);
+	overlay[2] = (a >> 16) | (b << 16);
+#endif
 }
 
 static inline void ppam_rx_default_cb(struct ppam_rx_default *p,
@@ -718,7 +724,7 @@ static inline void ppam_rx_default_cb(struct ppam_rx_default *p,
 	BUG_ON(fd->format != qm_fd_contig);
 	notes = __dma_mem_ptov(qm_fd_addr(fd));
 	eth_hdr = (void *)notes + dqrr->fd.offset;
-	switch (eth_hdr->ether_type) {
+	switch (ntohs(eth_hdr->ether_type)) {
 	case ETHERTYPE_IP:
 		TRACE("	       -> it's ETHERTYPE_IP!\n");
 		{

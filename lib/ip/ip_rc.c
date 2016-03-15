@@ -592,7 +592,7 @@ struct rc_bucket_t *__rc_find_bucket(struct rc_t *rc,
 
 	hash = compute_rc_hash(saddr, daddr);
 	pr_debug("Bucket hash is %x\n", hash);
-	pr_debug("Src = 0x%x Dest = 0x%x\n", saddr, daddr);
+	pr_debug("Src = 0x%x Dest = 0x%x\n", htonl(saddr), htonl(daddr));
 	return &(rc->buckets[hash]);
 }
 

@@ -34,6 +34,12 @@
 
 #include "net/annotations.h"
 
+#if __BYTE_ORDER == __BIG_ENDIAN
+#define ADD_CHECKSUM_VALUE 0x100
+#elif __BYTE_ORDER == __LITTLE_ENDIAN
+#define ADD_CHECKSUM_VALUE 0x1
+#endif
+
 /**
  \brief ip_checksum calculator
  \param[in] ip_hdr pointer to ip header checksum
