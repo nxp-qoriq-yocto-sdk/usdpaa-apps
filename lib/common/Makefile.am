@@ -31,4 +31,6 @@
 
 lib_LIBRARIES = app_refcount
 
+AM_CFLAGS := -I$(TOP_LEVEL)/include
+
 app_refcount_SOURCES := refcount.c

@@ -415,9 +415,15 @@ static inline void ether_header_swap(struct ether_header *prot_eth)
 	a = overlay[0];
 	b = overlay[1];
 	c = overlay[2];
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 	overlay[0] = (b << 16) | (c >> 16);
 	overlay[1] = (c << 16) | (a >> 16);
 	overlay[2] = (a << 16) | (b >> 16);
+#else
+	overlay[0] = (b >> 16) | (c << 16);
+	overlay[1] = (c >> 16) | (a << 16);
+	overlay[2] = (a >> 16) | (b << 16);
+#endif
 }
 
 /* DQRR callback for Rx FQs, this is the essential "reflector" logic (together
@@ -434,7 +440,7 @@ static enum qman_cb_dqrr_result cb_rx(struct qman_portal *qm __always_unused,
 	prot_eth = __dma_mem_ptov(qm_fd_addr(fd)) + fd->offset;
 	/* Broadcasts and non-IP packets are not reflected. */
 	if (likely(!(prot_eth->ether_dhost[0] & 0x01) &&
-			(prot_eth->ether_type == ETHERTYPE_IP))) {
+		   (prot_eth->ether_type == htons(ETHERTYPE_IP)))) {
 		struct iphdr *iphdr = (typeof(iphdr))(prot_eth + 1);
 		__be32 tmp;
 		/* switch ipv4 src/dst addresses */

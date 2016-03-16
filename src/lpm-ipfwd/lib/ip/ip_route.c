@@ -43,9 +43,9 @@ enum IP_STATUS ip_route_input(const struct ppam_rx_hash *ctxt,
 	switch (source) {
 	case SOURCE_POST_FMAN:
 	{
-		ret = ip_route_lookup(ip_hdr->daddr, &gwaddr, notes);
+		ret = ip_route_lookup(htonl(ip_hdr->daddr), &gwaddr, notes);
 		if (unlikely(ret != 0)) {
-			pr_info("error in lookup for IP%x\n", ip_hdr->daddr);
+			pr_info("error in lookup for IP%x\n", htonl(ip_hdr->daddr));
 			ppac_drop_frame(&notes->dqrr->fd);
 			return ret;
 		}

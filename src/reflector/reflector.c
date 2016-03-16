@@ -227,9 +227,15 @@ static inline void ether_header_swap(struct ether_header *prot_eth)
 	a = overlay[0];
 	b = overlay[1];
 	c = overlay[2];
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 	overlay[0] = (b << 16) | (c >> 16);
 	overlay[1] = (c << 16) | (a >> 16);
 	overlay[2] = (a << 16) | (b >> 16);
+#else
+	overlay[0] = (b >> 16) | (c << 16);
+	overlay[1] = (c >> 16) | (a << 16);
+	overlay[2] = (a >> 16) | (b << 16);
+#endif
 }
 
 static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
@@ -261,7 +267,7 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 	if (prot_eth->ether_dhost[0] & 0x01)
 		TRACE("	     -> dropping broadcast packet\n");
 	else
-	switch (prot_eth->ether_type)
+	switch (be16toh(prot_eth->ether_type))
 	{
 	case ETHERTYPE_IP:
 		TRACE("	       -> it's ETHERTYPE_IP!\n");
@@ -316,7 +322,7 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 		break;
 	default:
 		TRACE("	       -> it's UNKNOWN (!!) type 0x%04x\n",
-			prot_eth->ether_type);
+			be16toh(prot_eth->ether_type));
 		TRACE("		  -> dropping unknown packet\n");
 	}
 	ppac_drop_frame(fd);

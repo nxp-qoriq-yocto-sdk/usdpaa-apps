@@ -45,7 +45,7 @@ struct annotations_t {
 		struct neigh_t *neighbor;
 	};
 	/**< Pointer to the info related to Next Hop*/
-#ifndef __powerpc64__
+#if !defined(__aarch64__) && !defined(__powerpc64__)
 	uint8_t reserved[8];
 #endif
 	uint8_t reserved_1[64];

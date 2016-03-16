@@ -43,7 +43,7 @@ static void set_header(const struct ppac_interface *i, void *payload,
 	       sizeof(eth->ether_shost));
 	memcpy(eth->ether_dhost, dst, sizeof(eth->ether_dhost));
 
-	eth->ether_type = ETHERTYPE_IP;
+	eth->ether_type = htons(ETHERTYPE_IP);
 }
 
 static void cache_header(struct ll_cache_t *llc, const void *hdr)
@@ -56,7 +56,7 @@ static void output_header(void *hdr, const struct ll_cache_t *llc)
 {
 	memcpy(hdr, llc->ll_data, 2 * ETHER_ADDR_LEN);
 
-	((struct ether_header *)hdr)->ether_type = ETHERTYPE_IP;
+	((struct ether_header *)hdr)->ether_type = htons(ETHERTYPE_IP);
 }
 
 void eth_setup(struct ppam_interface *p)

@@ -446,6 +446,7 @@ int ppac_prepare_bpid(u8 bpid, unsigned int count, uint64_t sz,
 	struct bm_buffer bufs[8];
 	unsigned int num_bufs = 0;
 	int ret = 0;
+	int buff_memalign = 0;
 
 	BUG_ON(bpid >= PPAC_MAX_BPID);
 	if (pool[bpid])
@@ -474,6 +475,11 @@ int ppac_prepare_bpid(u8 bpid, unsigned int count, uint64_t sz,
 	if (num_bufs)
 		fprintf(stderr, "Warn: drained %u bufs from BPID %d\n",
 			num_bufs, bpid);
+	if (of_find_compatible_node(NULL, NULL, "fsl,ls1043a"))
+		buff_memalign = 2048;
+	else
+		buff_memalign = 64;
+
 	/* Fill the pool */
 	for (num_bufs = 0; num_bufs < count; ) {
 		unsigned int loop, rel = (count - num_bufs) > 8 ? 8 :
@@ -481,7 +487,7 @@ int ppac_prepare_bpid(u8 bpid, unsigned int count, uint64_t sz,
 		for (loop = 0; loop < rel; loop++) {
 			void *ptr;
 			if (!align)
-				ptr = __dma_mem_memalign(64, sz);
+				ptr = __dma_mem_memalign(buff_memalign, sz);
 			else
 				ptr = __dma_mem_memalign(align, sz);
 			if (!ptr) {
