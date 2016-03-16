@@ -284,7 +284,7 @@ static void *create_descriptor(bool mode, void *params)
 			rtv->protcmd.optype = OP_TYPE_ENCAP_PROTOCOL;
 			shared_desc_len = cnstr_shdsc_tls(shared_desc,
 					true,
-					false,
+					SWAP_DESCRIPTOR,
 					rtv->e_pdb,
 					sizeof(struct tls_block_pdb),
 					&rtv->protcmd,
@@ -294,7 +294,7 @@ static void *create_descriptor(bool mode, void *params)
 			rtv->protcmd.optype = OP_TYPE_DECAP_PROTOCOL;
 			shared_desc_len = cnstr_shdsc_tls(shared_desc,
 					true,
-					false,
+					SWAP_DESCRIPTOR,
 					rtv->d_pdb,
 					sizeof(struct tls_block_pdb),
 					&rtv->protcmd,
@@ -307,7 +307,10 @@ static void *create_descriptor(bool mode, void *params)
 		return NULL;
 	}
 
-	prehdr_desc->prehdr.hi.word = shared_desc_len & SEC_PREHDR_SDLEN_MASK;
+	prehdr_desc->prehdr.hi.field.idlen =
+					shared_desc_len & SEC_PREHDR_SDLEN_MASK;
+	prehdr_desc->prehdr.hi.word = cpu_to_be32(prehdr_desc->prehdr.hi.word);
+
 
 	pr_debug("SEC %s shared descriptor:\n", proto->name);
 

@@ -38,6 +38,12 @@
 #include <fsl_qman.h>
 #include <mutex.h>
 
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define SWAP_DESCRIPTOR		true
+#else
+#define SWAP_DESCRIPTOR		false
+#endif
+
 #define DES_BLOCK_SIZE		8
 #define AES_BLOCK_SIZE		16
 #define SHA1_DIGEST_SIZE	20

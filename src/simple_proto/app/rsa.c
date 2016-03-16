@@ -458,7 +458,7 @@ static void *create_descriptor(bool mode, void *params)
  * proper retrieval of PS.
  */
 						  true,
-						  false,
+						  SWAP_DESCRIPTOR,
 						  rtv->e_pdb,
 						  &rtv->protocmd);
 	} else {
@@ -480,12 +480,15 @@ static void *create_descriptor(bool mode, void *params)
  * proper retrieval of PS.
  */
 						  true,
-						  false,
+						  SWAP_DESCRIPTOR,
 						  rtv->d_pdb,
 						  &rtv->protocmd);
 	}
 
-	prehdr_desc->prehdr.hi.word = shared_desc_len & SEC_PREHDR_SDLEN_MASK;
+	prehdr_desc->prehdr.hi.field.idlen =
+					shared_desc_len & SEC_PREHDR_SDLEN_MASK;
+	prehdr_desc->prehdr.hi.word = cpu_to_be32(prehdr_desc->prehdr.hi.word);
+
 
 	pr_debug("SEC %s shared descriptor:\n", proto->name);
 

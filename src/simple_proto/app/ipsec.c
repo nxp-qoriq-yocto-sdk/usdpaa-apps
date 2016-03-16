@@ -282,14 +282,16 @@ static void *create_descriptor(bool mode, void *params)
 
 	if (ENCRYPT == mode)
 		shared_desc_len = cnstr_shdsc_ipsec_encap(shared_desc, true,
-					false, rtv->e_pdb, &cipher_info,
-					&auth_info);
+					SWAP_DESCRIPTOR, rtv->e_pdb,
+					&cipher_info, &auth_info);
 	else
 		shared_desc_len = cnstr_shdsc_ipsec_decap(shared_desc, true,
-					false, rtv->d_pdb, &cipher_info,
-					&auth_info);
+					SWAP_DESCRIPTOR, rtv->d_pdb,
+					&cipher_info, &auth_info);
 
-	prehdr_desc->prehdr.hi.word = shared_desc_len & SEC_PREHDR_SDLEN_MASK;
+	prehdr_desc->prehdr.hi.field.idlen =
+					shared_desc_len & SEC_PREHDR_SDLEN_MASK;
+	prehdr_desc->prehdr.hi.word = cpu_to_be32(prehdr_desc->prehdr.hi.word);
 
 	pr_debug("SEC %s shared descriptor:\n", proto->name);
 

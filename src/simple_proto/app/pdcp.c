@@ -420,7 +420,7 @@ static void *create_descriptor(bool mode, void *params)
 * proper retrieval of PS.
 */
 						       true,
-						       false,
+						       SWAP_DESCRIPTOR,
 						       hfn_val,
 						       ref_test_vector->bearer,
 						       ref_test_vector->dir,
@@ -436,7 +436,7 @@ static void *create_descriptor(bool mode, void *params)
 * proper retrieval of PS.
 */
 						       true,
-						       false,
+						       SWAP_DESCRIPTOR,
 						       hfn_val,
 						       ref_test_vector->bearer,
 						       ref_test_vector->dir,
@@ -455,7 +455,7 @@ static void *create_descriptor(bool mode, void *params)
 * proper retrieval of PS.
 */
 						       true,
-						       false,
+						       SWAP_DESCRIPTOR,
 						       ref_test_vector->sns,
 						       hfn_val,
 						       ref_test_vector->bearer,
@@ -471,7 +471,7 @@ static void *create_descriptor(bool mode, void *params)
 * proper retrieval of PS.
 */
 						       true,
-						       false,
+						       SWAP_DESCRIPTOR,
 						       ref_test_vector->sns,
 						       hfn_val,
 						       ref_test_vector->bearer,
@@ -490,7 +490,7 @@ static void *create_descriptor(bool mode, void *params)
 * proper retrieval of PS.
 */
 						   true,
-						   false,
+						   SWAP_DESCRIPTOR,
 						   &auth_info);
 		break;
 
@@ -499,7 +499,9 @@ static void *create_descriptor(bool mode, void *params)
 		return NULL;
 	}
 
-	prehdr_desc->prehdr.hi.word = shared_desc_len & SEC_PREHDR_SDLEN_MASK;
+	prehdr_desc->prehdr.hi.field.idlen =
+					shared_desc_len & SEC_PREHDR_SDLEN_MASK;
+	prehdr_desc->prehdr.hi.word = cpu_to_be32(prehdr_desc->prehdr.hi.word);
 
 	pr_debug("SEC %s shared descriptor:\n", proto->name);
 

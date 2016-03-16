@@ -239,7 +239,8 @@ static int mbms_enc_done_cbk(void *params, int iter)
 				get_mbms_stats(desc,
 					       (void *)&stats0,
 					       mbms_params->type);
-				crc_header_fail += stats0.crc_header_fail;
+				crc_header_fail +=
+					be32_to_cpu(stats0.crc_header_fail);
 				break;
 
 			case MBMS_PDU_TYPE1:
@@ -247,8 +248,10 @@ static int mbms_enc_done_cbk(void *params, int iter)
 				get_mbms_stats(desc,
 					       (void *)&stats1_3,
 					       mbms_params->type);
-				crc_header_fail += stats1_3.crc_header_fail;
-				crc_payload_fail += stats1_3.crc_payload_fail;
+				crc_header_fail +=
+					be32_to_cpu(stats1_3.crc_header_fail);
+				crc_payload_fail +=
+					be32_to_cpu(stats1_3.crc_payload_fail);
 				break;
 
 			default:
@@ -326,7 +329,8 @@ static void *create_descriptor(bool mode, void *params)
 	shared_desc = (typeof(shared_desc))&prehdr_desc->descbuf;
 
 	shared_desc_len = cnstr_shdsc_mbms(shared_desc,
-					   true, false,
+					   true,
+					   SWAP_DESCRIPTOR,
 					   &preheader_len,
 					   mbms_params->type);
 
@@ -348,7 +352,9 @@ static void *create_descriptor(bool mode, void *params)
 		return NULL;
 	}
 
-	prehdr_desc->prehdr.hi.word = preheader_len & SEC_PREHDR_SDLEN_MASK;
+	prehdr_desc->prehdr.hi.field.idlen =
+					preheader_len & SEC_PREHDR_SDLEN_MASK;
+	prehdr_desc->prehdr.hi.word = cpu_to_be32(prehdr_desc->prehdr.hi.word);
 
 	pr_debug("SEC %s shared descriptor:\n", proto->name);
 

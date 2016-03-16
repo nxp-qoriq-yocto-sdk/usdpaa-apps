@@ -123,6 +123,9 @@ int create_compound_fd(unsigned buf_num, struct compound_fd_params *fd_params)
 		fd[ind].cong_weight = 2 * sizeof(struct qm_sg_entry);
 
 		sg_priv_and_data->index = ind;
+
+		cpu_to_hw_sg(sg);
+		cpu_to_hw_sg(++sg);
 	}
 	return 0;
 }
@@ -593,7 +596,9 @@ static inline void dump_sg(struct qm_sg_entry *sgentry)
 	if (!sgentry)
 		return;
 
+	hw_sg_to_cpu(sgentry);
 	addr = qm_sg_entry_get64(sgentry);
+
 	fprintf(stdout, "error: - SG Entry\n");
 	fprintf(stdout, "error:       - address	0x%"
 		PRIx64 "\n", addr);
@@ -610,14 +615,18 @@ static inline void dump_sg(struct qm_sg_entry *sgentry)
 
 	v = __dma_mem_ptov(addr);
 	if (sgentry->extension) {
+		cpu_to_hw_sg(sgentry);
 		dump_sg((struct qm_sg_entry *)v);
 	} else {
 		hexdump((uint8_t *)v + sgentry->offset,
 			sgentry->length);
-		if (sgentry->final)
-			return;
 
-		dump_sg(++sgentry);
+		if (sgentry->final) {
+			cpu_to_hw_sg(sgentry);
+		} else {
+			cpu_to_hw_sg(sgentry);
+			dump_sg(++sgentry);
+		}
 	}
 }
 

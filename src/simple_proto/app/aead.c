@@ -291,7 +291,7 @@ static void *create_descriptor(bool mode, void *params)
 
 	shared_desc_len = cnstr_shdsc_authenc(shared_desc,
 					      true,
-					      false,
+					      SWAP_DESCRIPTOR,
 					      &cipher_info,
 					      &auth_info,
 					      rtv->ivlen,

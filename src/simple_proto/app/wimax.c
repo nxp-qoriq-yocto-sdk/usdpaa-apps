@@ -137,9 +137,7 @@ int init_rtv_wimax_aes_ccm_128(struct test_param *crypto_info)
 	}
 
 	/* set the WiMAX PDB for test */
-	memcpy(&ref_test_vector->pn,
-	       &wimax_reference_pn[crypto_info->test_set - 1],
-	       WIMAX_PN_SIZE);
+	ref_test_vector->pn = wimax_reference_pn[crypto_info->test_set - 1];
 
 	if (wimax_params->ar) {
 		ref_test_vector->decap_opts = WIMAX_PDBOPTS_AR;
@@ -296,20 +294,24 @@ static void *create_descriptor(bool mode, void *params)
 	cipher_info.key_enc_flags = 0;
 	cipher_info.key_type = RTA_DATA_IMM;
 	if (ENCRYPT == mode)
-		shared_desc_len = cnstr_shdsc_wimax_encap(shared_desc, false,
+		shared_desc_len = cnstr_shdsc_wimax_encap(shared_desc,
+					SWAP_DESCRIPTOR,
 					ref_test_vector->encap_opts,
 					ref_test_vector->pn,
 					ref_test_vector->protinfo,
 					&cipher_info);
 	else
-		shared_desc_len = cnstr_shdsc_wimax_decap(shared_desc, false,
+		shared_desc_len = cnstr_shdsc_wimax_decap(shared_desc,
+					SWAP_DESCRIPTOR,
 					ref_test_vector->decap_opts,
 					ref_test_vector->pn,
 					ref_test_vector->ar_len,
 					ref_test_vector->protinfo,
 					&cipher_info);
 
-	prehdr_desc->prehdr.hi.word = shared_desc_len & SEC_PREHDR_SDLEN_MASK;
+	prehdr_desc->prehdr.hi.field.idlen =
+					shared_desc_len & SEC_PREHDR_SDLEN_MASK;
+	prehdr_desc->prehdr.hi.word = cpu_to_be32(prehdr_desc->prehdr.hi.word);
 
 	pr_debug("SEC %s shared descriptor:\n", proto->name);
 
