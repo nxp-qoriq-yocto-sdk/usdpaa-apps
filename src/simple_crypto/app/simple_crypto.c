@@ -473,9 +473,6 @@ void *setup_sec_descriptor(bool mode, void *params)
 {
 	struct test_param crypto_info = *((struct test_param *)params);
 	void *descriptor = NULL;
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-	int i;
-#endif
 
 	if (SNOW_F8_F9 == crypto_info.algo) {
 		descriptor = setup_preheader(
