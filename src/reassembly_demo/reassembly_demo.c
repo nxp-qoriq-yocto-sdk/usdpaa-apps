@@ -50,7 +50,10 @@
 #endif
 
 #define ENABLE_PROMISC
-#define NET_IF_ADMIN_PRIORITY 4
+#define NET_IF_ADMIN_PRIORITY	4
+
+#define IPv4_KEY_SIZE		6
+#define IPv6_KEY_SIZE		18
 
 static int ppam_cli_parse(int key, char *arg, struct argp_state *state);
 static int create_dpa_stats_counters(void);
@@ -418,12 +421,12 @@ static inline void ether_header_swap(struct ether_header *prot_eth)
 {
 	register u32 a, b, c;
 	u32 *overlay = (u32 *)prot_eth;
-	a = overlay[0];
-	b = overlay[1];
-	c = overlay[2];
-	overlay[0] = (b << 16) | (c >> 16);
-	overlay[1] = (c << 16) | (a >> 16);
-	overlay[2] = (a << 16) | (b >> 16);
+	a = ntohl(overlay[0]);
+	b = ntohl(overlay[1]);
+	c = ntohl(overlay[2]);
+	overlay[0] = htonl((b << 16) | (c >> 16));
+	overlay[1] = htonl((c << 16) | (a >> 16));
+	overlay[2] = htonl((a << 16) | (b >> 16));
 }
 
 static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
@@ -438,6 +441,10 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 	void *next_header;
 	bool continue_parsing;
 	uint16_t proto, len = 0;
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+	u8 *s, *t;
+	u16 i, offset;
+#endif
 
 	annotations = __dma_mem_ptov(qm_fd_addr(fd));
 	TRACE("Rx: 2fwd	 fqid=%d\n", dqrr->fqid);
@@ -451,8 +458,19 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 	case qm_fd_sg:
 		TRACE("FD format = qm_fd_sg\n");
 		addr = annotations + fd->offset;
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 		prot_eth = __dma_mem_ptov(qm_sg_entry_get64(addr)) +
 				((struct qm_sg_entry *)addr)->offset;
+#else
+		/* Reverse the buffer address from the S/G entry */
+		s = (u8*)addr + 3;
+		addr = NULL;
+		t = (u8*)&addr;
+		for (i = 0; i < 5; i++)
+			t[i] = s[4-i];
+		offset = ntohs(*(u16*)(s + 11));
+		prot_eth = __dma_mem_ptov((dma_addr_t)((u8*)addr + offset));
+#endif
 		break;
 
 	default:
@@ -461,7 +479,7 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 	}
 
 	next_header = (prot_eth + 1);
-	proto = prot_eth->ether_type;
+	proto = ntohs(prot_eth->ether_type);
 	len = sizeof(struct ether_header);
 
 	TRACE("	     phys=0x%"PRIx64", virt=%p, offset=%d, len=%d, bpid=%d\n",
@@ -474,7 +492,7 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 	      prot_eth->ether_shost[0], prot_eth->ether_shost[1],
 	      prot_eth->ether_shost[2], prot_eth->ether_shost[3],
 	      prot_eth->ether_shost[4], prot_eth->ether_shost[5]);
-	TRACE("	     ether_type=%04x\n", prot_eth->ether_type);
+	TRACE("	     ether_type=%04x\n", ntohs(prot_eth->ether_type));
 	/* Eliminate ethernet broadcasts. */
 	if (prot_eth->ether_dhost[0] & 0x01)
 		TRACE("	     -> dropping broadcast packet\n");
@@ -488,7 +506,7 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 			struct vlan_hdr *vlanhdr = (struct vlan_hdr *)
 							(next_header);
 
-			proto = vlanhdr->type;
+			proto = ntohs(vlanhdr->type);
 			next_header = (void *)vlanhdr + sizeof(struct vlan_hdr);
 			len = len + sizeof(struct vlan_hdr);
 			}
@@ -502,10 +520,11 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 			u8 *dst = (void *)&iphdr->daddr;
 			TRACE("		  ver=%d,ihl=%d,tos=%d,len=%d,id=%d\n",
 				iphdr->version, iphdr->ihl, iphdr->tos,
-				iphdr->tot_len, iphdr->id);
+				ntohs(iphdr->tot_len), ntohs(iphdr->id));
 			TRACE("		  frag_off=%d,ttl=%d,prot=%d,"
-				"csum=0x%04x\n", iphdr->frag_off, iphdr->ttl,
-				iphdr->protocol, iphdr->check);
+				"csum=0x%04x\n", ntohs(iphdr->frag_off),
+				iphdr->ttl, iphdr->protocol,
+				ntohs(iphdr->check));
 			TRACE("		  src=%d.%d.%d.%d\n",
 				src[0], src[1], src[2], src[3]);
 			TRACE("		  dst=%d.%d.%d.%d\n",
@@ -527,7 +546,7 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 				tx_fqid = p->tx_fqid;
 			/* IPv4 frame may contain ESP padding */
 			_fd = *fd;
-			_fd.length20 = len + iphdr->tot_len;
+			_fd.length20 = len + ntohs(iphdr->tot_len);
 
 			ppac_send_frame(tx_fqid, &_fd);
 			}
@@ -543,13 +562,13 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 			TRACE("	ver=%d, priority=%d, payload_len=%d,"
 				" nexthdr=%d, hop_limit=%d\n",
 				((ipv6hdr->ip6_vfc & 0xf0) >> 4),
-				((ipv6hdr->ip6_flow & 0x0ff00000) >> 20),
-				ipv6hdr->ip6_plen,
+				((ntohl(ipv6hdr->ip6_flow) & 0x0ff00000) >> 20),
+				ntohs(ipv6hdr->ip6_plen),
 				ipv6hdr->ip6_nxt, ipv6hdr->ip6_hops);
 			TRACE(" flow_lbl=%d.%d.%d\n",
-				((ipv6hdr->ip6_flow & 0x000f0000) >> 16),
-				((ipv6hdr->ip6_flow & 0x0000ff00) >> 8),
-				(ipv6hdr->ip6_flow & 0x000000ff));
+				((ntohl(ipv6hdr->ip6_flow) & 0x000f0000) >> 16),
+				((ntohl(ipv6hdr->ip6_flow) & 0x0000ff00) >> 8),
+				(ntohl(ipv6hdr->ip6_flow) & 0x000000ff));
 			TRACE(" src=%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x\n",
 				ipv6hdr->ip6_src.__in6_u.__u6_addr16[0],
 				ipv6hdr->ip6_src.__in6_u.__u6_addr16[1],
@@ -584,7 +603,7 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 			/* IPv6 frame may contain ESP padding */
 			_fd = *fd;
 			_fd.length20 = len + sizeof(struct ip6_hdr) +
-				ipv6hdr->ip6_ctlun.ip6_un1.ip6_un1_plen;
+				ntohs(ipv6hdr->ip6_ctlun.ip6_un1.ip6_un1_plen);
 			ppac_send_frame(tx_fqid, &_fd);
 			}
 			continue_parsing = FALSE;
@@ -597,8 +616,8 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 			struct ether_arp *arp = (typeof(arp))(next_header);
 			TRACE("		  hrd=%d, pro=%d, hln=%d, pln=%d,"
 				" op=%d\n",
-				arp->arp_hrd, arp->arp_pro, arp->arp_hln,
-				arp->arp_pln, arp->arp_op);
+				ntohs(arp->arp_hrd), ntohs(arp->arp_pro),
+				arp->arp_hln, arp->arp_pln, ntohs(arp->arp_op));
 			}
 
 			TRACE("		  -> dropping ARP packet\n");
@@ -653,6 +672,14 @@ static int create_dpa_stats_counters(void)
 	uint32_t i = 0, cntId = 0, j = 0;
 	char object_name[100];
 	int err = 0;
+	u8 ipv4_key_template[IPv4_KEY_SIZE] = {
+		0x00, 0x01, 0xc0, 0xa8, 0x00, 0x01
+	};
+	u8 ipv6_key_template[IPv6_KEY_SIZE] = {
+		0x00, 0x01, 0x3f, 0xfe, 0x19, 0x44,
+		0x01, 0x00, 0x00, 0x0a, 0x00, 0x00,
+		0x00, 0xbc, 0x25, 0x00, 0x0d, 0x0b
+	};
 
 	printf("reassembly_demo is assuming FMan:%d and MAC:%d\n",
 		ppam_args.fm, ppam_args.port);
@@ -743,7 +770,7 @@ static int create_dpa_stats_counters(void)
 	cnt_params.classif_node_params.cnt_sel = DPA_STATS_CNT_CLASSIF_PACKETS;
 
 	for (i = 0; i < 4; i++) {
-		keys[i].size = 18;
+		keys[i].size = IPv6_KEY_SIZE;
 
 		keys[i].byte = malloc(keys[i].size);
 		if (!keys[i].byte) {
@@ -758,12 +785,10 @@ static int create_dpa_stats_counters(void)
 		}
 		memset(keys[i].mask, 0xFF, keys[i].size);
 
-		*(uint64_t *)&keys[i].byte[0] = 0x00013FFE19440100;
-		*(uint64_t *)&keys[i].byte[8] = 0x000A000000BC2500;
-		*(uint16_t *)&keys[i].byte[16] = 0x0D0B;
+		memcpy(keys[i].byte, ipv6_key_template, keys[i].size);
 
-		*(uint8_t *)&keys[i].byte[1] = i + 1;
-		*(uint8_t *)&keys[i].byte[6] = i + 1;
+		keys[i].byte[1] = i + 1;
+		keys[i].byte[6] = i + 1;
 
 		cnt_params.classif_node_params.key = &keys[i];
 
@@ -841,7 +866,7 @@ static int create_dpa_stats_counters(void)
 	cnt_params.classif_node_params.cnt_sel = DPA_STATS_CNT_CLASSIF_PACKETS;
 
 	for (i = 4; i < 8; i++) {
-		keys[i].size = 6;
+		keys[i].size = IPv4_KEY_SIZE;
 
 		keys[i].byte = malloc(keys[i].size);
 		if (!keys[i].byte) {
@@ -856,11 +881,10 @@ static int create_dpa_stats_counters(void)
 		}
 		memset(keys[i].mask, 0xFF, keys[i].size);
 
-		*(uint32_t *)&keys[i].byte[0] = 0x0001C0A8;
-		*(uint16_t *)&keys[i].byte[4] = 0x0001;
+		memcpy(keys[i].byte, ipv4_key_template, keys[i].size);
 
-		*(uint8_t *)&keys[i].byte[1] = i-3;
-		*(uint8_t *)&keys[i].byte[5] = i-3;
+		keys[i].byte[1] = i-3;
+		keys[i].byte[5] = i-3;
 
 		cnt_params.classif_node_params.key = &keys[i];
 
