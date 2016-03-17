@@ -37,6 +37,7 @@ dist_DATA =  fragmentation_demo_config-p4080.xml \
 		fragmentation_demo_config-p2041.xml \
 		fragmentation_demo_config-t2080.xml \
 		fragmentation_demo_config-t4240.xml \
+		fragmentation_demo_config-ls1043a.xml \
 		fragmentation_demo_policy.xml
 
 fragmentation_demo_CFLAGS := $(FMC_CFLAGS) $(FMLIB_CFLAGS) $(DPAOFFLOAD_CFLAGS)

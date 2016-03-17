@@ -46,6 +46,8 @@
 
 #include "fmc.h"
 
+#define FRAME_CONTENT_DEBUG_DUMP_LEN	256
+
 /* Override the default command prompt */
 const char ppam_prompt[] = "fragmentation_demo > ";
 
@@ -281,7 +283,64 @@ static inline void ppam_rx_error_cb(struct ppam_rx_error *p,
 				    struct ppam_interface *_if,
 				    const struct qm_dqrr_entry *dqrr)
 {
+#ifdef ENABLE_TRACE
+	u8 *data = NULL;
+	unsigned i, size = 0;
+#endif
 	const struct qm_fd *fd = &dqrr->fd;
+
+	switch (fd->format) {
+	case qm_fd_contig:
+		printf("Rx_error (qm_fd_contig): fqid=0x%x, size=%u (bytes), fd_status=0x%08x\n",
+			dqrr->fqid, fd->length20, dqrr->fd.status);
+#ifdef ENABLE_TRACE
+		size = fd->length20;
+		data = __dma_mem_ptov(qm_fd_addr(fd)) + fd->offset;
+#endif
+		break;
+	case qm_fd_sg:
+		printf("Rx_error (qm_fd_sg): fqid=0x%x, size=%u (bytes), fd_status=0x%08x\n",
+			dqrr->fqid, fd->length20, dqrr->fd.status);
+		break;
+	case qm_fd_contig_big:
+		printf("Rx_error (qm_fd_contig_big): fqid=0x%x, size=%u (bytes), fd_status=0x%08x\n",
+			dqrr->fqid, fd->length29, dqrr->fd.status);
+#ifdef ENABLE_TRACE
+		size = fd->length29;
+		data = __dma_mem_ptov(qm_fd_addr(fd));
+#endif
+		break;
+	case qm_fd_sg_big:
+		printf("Rx_error (qm_fd_sg_big): fqid=0x%x, size=%u (bytes), fd_status=0x%08x\n",
+			dqrr->fqid, fd->length29, dqrr->fd.status);
+		break;
+	default:
+		printf("Rx_error: fqid=0x%x, fd_status=0x%08x\n", dqrr->fqid,
+			dqrr->fd.status);
+		break;
+	}
+
+#ifdef ENABLE_TRACE
+	if (size > 0) {
+		if (size < FRAME_CONTENT_DEBUG_DUMP_LEN)
+			printf("\nDEBUG dump frame content:\n");
+		else {
+			printf("\nDEBUG dump frame content (first %d bytes):\n",
+				FRAME_CONTENT_DEBUG_DUMP_LEN);
+			size = FRAME_CONTENT_DEBUG_DUMP_LEN;
+		}
+
+		for (i = 0; i < size; i++) {
+			if (i % 16 == 0)
+				printf("0x%02x: ", i);
+			printf("%02x ", data[i]);
+			if ((i+1) % 16 == 0)
+				printf("\n");
+		}
+		printf("\n");
+	}
+#endif /* ENABLE_TRACE */
+
 	ppac_drop_frame(fd);
 }
 
@@ -302,7 +361,63 @@ static inline void ppam_rx_default_cb(struct ppam_rx_default *p,
 				      struct ppam_interface *_if,
 				      const struct qm_dqrr_entry *dqrr)
 {
+#ifdef ENABLE_TRACE
+	u8 *data = NULL;
+	unsigned i, size = 0;
+#endif
 	const struct qm_fd *fd = &dqrr->fd;
+
+	switch (fd->format) {
+	case qm_fd_contig:
+		printf("Rx_default (qm_fd_contig): fqid=0x%x, size=%u (bytes), fd_status=0x%08x\n",
+			dqrr->fqid, fd->length20, dqrr->fd.status);
+#ifdef ENABLE_TRACE
+		size = fd->length20;
+		data = __dma_mem_ptov(qm_fd_addr(fd)) + fd->offset;
+#endif
+		break;
+	case qm_fd_sg:
+		printf("Rx_default (qm_fd_sg): fqid=0x%x, size=%u (bytes), fd_status=0x%08x\n",
+			dqrr->fqid, fd->length20, dqrr->fd.status);
+		break;
+	case qm_fd_contig_big:
+		printf("Rx_default (qm_fd_contig_big): fqid=0x%x, size=%u (bytes), fd_status=0x%08x\n",
+			dqrr->fqid, fd->length29, dqrr->fd.status);
+#ifdef ENABLE_TRACE
+		size = fd->length29;
+		data = __dma_mem_ptov(qm_fd_addr(fd));
+#endif
+		break;
+	case qm_fd_sg_big:
+		printf("Rx_default (qm_fd_sg_big): fqid=0x%x, size=%u (bytes), fd_status=0x%08x\n",
+			dqrr->fqid, fd->length29, dqrr->fd.status);
+		break;
+	default:
+		printf("Rx_default: fqid=0x%x, fd_status=0x%08x\n", dqrr->fqid,
+			dqrr->fd.status);
+		break;
+	}
+
+#ifdef ENABLE_TRACE
+	if (size > 0) {
+		if (size < FRAME_CONTENT_DEBUG_DUMP_LEN)
+			printf("\nDEBUG dump frame content:\n");
+		else {
+			printf("\nDEBUG dump frame content (first %d bytes):\n",
+				FRAME_CONTENT_DEBUG_DUMP_LEN);
+			size = FRAME_CONTENT_DEBUG_DUMP_LEN;
+		}
+
+		for (i = 0; i < size; i++) {
+			if (i % 16 == 0)
+				printf("0x%02x: ", i);
+			printf("%02x ", data[i]);
+			if ((i+1) % 16 == 0)
+				printf("\n");
+		}
+		printf("\n");
+	}
+#endif /* ENABLE_TRACE */
 
 	ppac_drop_frame(fd);
 }
@@ -323,7 +438,64 @@ static inline void ppam_tx_error_cb(struct ppam_tx_error *p,
 				    struct ppam_interface *_if,
 				    const struct qm_dqrr_entry *dqrr)
 {
+#ifdef ENABLE_TRACE
+	u8 *data = NULL;
+	unsigned i, size = 0;
+#endif
 	const struct qm_fd *fd = &dqrr->fd;
+
+	switch (fd->format) {
+	case qm_fd_contig:
+		printf("Tx_error (qm_fd_contig): fqid=0x%x, size=%u (bytes), fd_status=0x%08x\n",
+			dqrr->fqid, fd->length20, dqrr->fd.status);
+#ifdef ENABLE_TRACE
+		size = fd->length20;
+		data = __dma_mem_ptov(qm_fd_addr(fd)) + fd->offset;
+#endif
+		break;
+	case qm_fd_sg:
+		printf("Tx_error (qm_fd_sg): fqid=0x%x, size=%u (bytes), fd_status=0x%08x\n",
+			dqrr->fqid, fd->length20, dqrr->fd.status);
+		break;
+	case qm_fd_contig_big:
+		printf("Tx_error (qm_fd_contig_big): fqid=0x%x, size=%u (bytes), fd_status=0x%08x\n",
+			dqrr->fqid, fd->length29, dqrr->fd.status);
+#ifdef ENABLE_TRACE
+		size = fd->length29;
+		data = __dma_mem_ptov(qm_fd_addr(fd));
+#endif
+		break;
+	case qm_fd_sg_big:
+		printf("Tx_error (qm_fd_sg_big): fqid=0x%x, size=%u (bytes), fd_status=0x%08x\n",
+			dqrr->fqid, fd->length29, dqrr->fd.status);
+		break;
+	default:
+		printf("Tx_error: fqid=0x%x, fd_status=0x%08x\n", dqrr->fqid,
+			dqrr->fd.status);
+		break;
+	}
+
+#ifdef ENABLE_TRACE
+	if (size > 0) {
+		if (size < FRAME_CONTENT_DEBUG_DUMP_LEN)
+			printf("\nDEBUG dump frame content:\n");
+		else {
+			printf("\nDEBUG dump frame content (first %d bytes):\n",
+				FRAME_CONTENT_DEBUG_DUMP_LEN);
+			size = FRAME_CONTENT_DEBUG_DUMP_LEN;
+		}
+
+		for (i = 0; i < size; i++) {
+			if (i % 16 == 0)
+				printf("0x%02x: ", i);
+			printf("%02x ", data[i]);
+			if ((i+1) % 16 == 0)
+				printf("\n");
+		}
+		printf("\n");
+	}
+#endif /* ENABLE_TRACE */
+
 	ppac_drop_frame(fd);
 }
 
@@ -344,6 +516,30 @@ static inline void ppam_tx_confirm_cb(struct ppam_tx_confirm *p,
 				      const struct qm_dqrr_entry *dqrr)
 {
 	const struct qm_fd *fd = &dqrr->fd;
+
+	switch (fd->format) {
+	case qm_fd_contig:
+		printf("Tx_conf (qm_fd_contig): fqid=0x%x, size=%u (bytes), fd_status=0x%08x\n",
+			dqrr->fqid, fd->length20, dqrr->fd.status);
+		break;
+	case qm_fd_sg:
+		printf("Tx_conf (qm_fd_sg): fqid=0x%x, size=%u (bytes), fd_status=0x%08x\n",
+			dqrr->fqid, fd->length20, dqrr->fd.status);
+		break;
+	case qm_fd_contig_big:
+		printf("Tx_conf (qm_fd_contig_big): fqid=0x%x, size=%u (bytes), fd_status=0x%08x\n",
+			dqrr->fqid, fd->length29, dqrr->fd.status);
+		break;
+	case qm_fd_sg_big:
+		printf("Tx_conf (qm_fd_sg_big): fqid=0x%x, size=%u (bytes), fd_status=0x%08x\n",
+			dqrr->fqid, fd->length29, dqrr->fd.status);
+		break;
+	default:
+		printf("Tx_conf: fqid=0x%x, fd_status=0x%08x\n", dqrr->fqid,
+			dqrr->fd.status);
+		break;
+	}
+
 	ppac_drop_frame(fd);
 }
 
@@ -417,12 +613,12 @@ static inline void ether_header_swap(struct ether_header *prot_eth)
 {
 	register u32 a, b, c;
 	u32 *overlay = (u32 *)prot_eth;
-	a = overlay[0];
-	b = overlay[1];
-	c = overlay[2];
-	overlay[0] = (b << 16) | (c >> 16);
-	overlay[1] = (c << 16) | (a >> 16);
-	overlay[2] = (a << 16) | (b >> 16);
+	a = ntohl(overlay[0]);
+	b = ntohl(overlay[1]);
+	c = ntohl(overlay[2]);
+	overlay[0] = htonl((b << 16) | (c >> 16));
+	overlay[1] = htonl((c << 16) | (a >> 16));
+	overlay[2] = htonl((a << 16) | (b >> 16));
 }
 
 static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
@@ -437,6 +633,10 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 	void *next_header;
 	bool continue_parsing;
 	uint16_t proto, len = 0;
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+	u8 *s, *t;
+	u16 i, offset;
+#endif
 
 	annotations = __dma_mem_ptov(qm_fd_addr(fd));
 	TRACE("Rx: 2fwd	 fqid=%d\n", dqrr->fqid);
@@ -450,8 +650,19 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 	case qm_fd_sg:
 		TRACE("FD format = qm_fd_sg\n");
 		addr = annotations + fd->offset;
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 		prot_eth = __dma_mem_ptov(qm_sg_entry_get64(addr)) +
 				((struct qm_sg_entry *)addr)->offset;
+#else
+		/* Reverse the buffer address from the S/G entry */
+		s = (u8*)addr + 3;
+		addr = NULL;
+		t = (u8*)&addr;
+		for (i = 0; i < 5; i++)
+			t[i] = s[4-i];
+		offset = ntohs(*(u16*)(s + 11));
+		prot_eth = __dma_mem_ptov((dma_addr_t)((u8*)addr + offset));
+#endif
 		break;
 
 	default:
@@ -460,7 +671,7 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 	}
 
 	next_header = (prot_eth + 1);
-	proto = prot_eth->ether_type;
+	proto = ntohs(prot_eth->ether_type);
 	len = sizeof(struct ether_header);
 
 	TRACE("	     phys=0x%"PRIx64", virt=%p, offset=%d, len=%d, bpid=%d\n",
@@ -473,7 +684,7 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 	      prot_eth->ether_shost[0], prot_eth->ether_shost[1],
 	      prot_eth->ether_shost[2], prot_eth->ether_shost[3],
 	      prot_eth->ether_shost[4], prot_eth->ether_shost[5]);
-	TRACE("	     ether_type=%04x\n", prot_eth->ether_type);
+	TRACE("	     ether_type=%04x\n", ntohs(prot_eth->ether_type));
 	/* Eliminate ethernet broadcasts. */
 	if (prot_eth->ether_dhost[0] & 0x01)
 		TRACE("	     -> dropping broadcast packet\n");
@@ -490,10 +701,11 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 			u8 *dst = (void *)&iphdr->daddr;
 			TRACE("		  ver=%d,ihl=%d,tos=%d,len=%d,id=%d\n",
 				iphdr->version, iphdr->ihl, iphdr->tos,
-				iphdr->tot_len, iphdr->id);
+				ntohs(iphdr->tot_len), ntohs(iphdr->id));
 			TRACE("		  frag_off=%d,ttl=%d,prot=%d,"
-				"csum=0x%04x\n", iphdr->frag_off, iphdr->ttl,
-				iphdr->protocol, iphdr->check);
+				"csum=0x%04x\n", ntohs(iphdr->frag_off),
+				iphdr->ttl, iphdr->protocol,
+				ntohs(iphdr->check));
 			TRACE("		  src=%d.%d.%d.%d\n",
 				src[0], src[1], src[2], src[3]);
 			TRACE("		  dst=%d.%d.%d.%d\n",
@@ -514,7 +726,7 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 				tx_fqid = p->tx_fqid;
 			/* IPv4 frame may contain ESP padding */
 			_fd = *fd;
-			_fd.length20 = len + iphdr->tot_len;
+			_fd.length20 = len + ntohs(iphdr->tot_len);
 
 			ppac_send_frame(tx_fqid, &_fd);
 			continue_parsing = FALSE;
@@ -529,13 +741,13 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 			TRACE("	ver=%d, priority=%d, payload_len=%d,"
 				" nexthdr=%d, hop_limit=%d\n",
 				((ipv6hdr->ip6_vfc & 0xf0) >> 4),
-				((ipv6hdr->ip6_flow & 0x0ff00000) >> 20),
-				ipv6hdr->ip6_plen,
+				((ntohl(ipv6hdr->ip6_flow) & 0x0ff00000) >> 20),
+				ntohs(ipv6hdr->ip6_plen),
 				ipv6hdr->ip6_nxt, ipv6hdr->ip6_hops);
 			TRACE(" flow_lbl=%d.%d.%d\n",
-				((ipv6hdr->ip6_flow & 0x000f0000) >> 16),
-				((ipv6hdr->ip6_flow & 0x0000ff00) >> 8),
-				(ipv6hdr->ip6_flow & 0x000000ff));
+				((ntohl(ipv6hdr->ip6_flow) & 0x000f0000) >> 16),
+				((ntohl(ipv6hdr->ip6_flow) & 0x0000ff00) >> 8),
+				(ntohl(ipv6hdr->ip6_flow) & 0x000000ff));
 			TRACE(" src=%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x\n",
 				ipv6hdr->ip6_src.__in6_u.__u6_addr16[0],
 				ipv6hdr->ip6_src.__in6_u.__u6_addr16[1],
@@ -570,7 +782,7 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 			/* IPv6 frame may contain ESP padding */
 			_fd = *fd;
 			_fd.length20 = len + sizeof(struct ip6_hdr) +
-				ipv6hdr->ip6_ctlun.ip6_un1.ip6_un1_plen;
+				ntohs(ipv6hdr->ip6_ctlun.ip6_un1.ip6_un1_plen);
 
 			ppac_send_frame(tx_fqid, &_fd);
 			continue_parsing = FALSE;
@@ -582,7 +794,7 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 			struct vlan_hdr *vlanhdr = (struct vlan_hdr *)
 							(next_header);
 
-			proto = vlanhdr->type;
+			proto = ntohs(vlanhdr->type);
 			next_header = (void *)vlanhdr + sizeof(struct vlan_hdr);
 			len = len + sizeof(struct vlan_hdr);
 			}
@@ -594,8 +806,8 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 			struct ether_arp *arp = (typeof(arp))(next_header);
 			TRACE("		  hrd=%d, pro=%d, hln=%d, pln=%d,"
 				" op=%d\n",
-				arp->arp_hrd, arp->arp_pro, arp->arp_hln,
-				arp->arp_pln, arp->arp_op);
+				ntohs(arp->arp_hrd), ntohs(arp->arp_pro),
+				arp->arp_hln, arp->arp_pln, ntohs(arp->arp_op));
 			}
 
 			TRACE("		  -> dropping ARP packet\n");
@@ -603,7 +815,7 @@ static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
 			break;
 		default:
 			TRACE("	       -> it's UNKNOWN (!!) type 0x%04x\n",
-				prot_eth->ether_type);
+				ntohs(prot_eth->ether_type));
 			TRACE("		  -> dropping unknown packet\n");
 			ppac_drop_frame(fd);
 			continue_parsing = FALSE;
