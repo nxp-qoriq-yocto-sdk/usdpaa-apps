@@ -140,25 +140,6 @@
 		<action type="classification" name="3_tuple_ipv6_classif"/>
 	</distribution>
 
-	<manipulations>
-		<header name="fwd6" duplicate="64">
-			<insert>
-				<size>12</size>
-				<offset>0</offset>
-				<replace>yes</replace>
-				<data>0x0102030405060708090a0b0c</data>
-			</insert>
-		</header>
-		<header name="fwd4" duplicate="64">
-			<insert>
-				<size>12</size>
-				<offset>0</offset>
-				<replace>yes</replace>
-				<data>0x0102030405060708090a0b0c</data>
-			</insert>
-		</header>
-	</manipulations>
-
 	<!-- Default distribution for garbage -->
 	<distribution name="default_dist">
 		<queue count="1" base="0x65"/>

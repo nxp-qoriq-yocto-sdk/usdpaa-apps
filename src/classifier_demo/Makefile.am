@@ -37,6 +37,7 @@ dist_DATA = classifier_demo_config-p4080.xml \
 	    classifier_demo_config-p2041.xml \
 	    classifier_demo_config-t2080.xml \
 	    classifier_demo_config-t4240.xml \
+	    classifier_demo_config-ls1043a.xml \
 	    classifier_demo_policy.xml
 
 classifier_demo_CFLAGS := -I$(TOP_LEVEL)/lib/hash_table \

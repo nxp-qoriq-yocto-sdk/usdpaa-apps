@@ -52,7 +52,7 @@
 #define MAC_CHARACTER_LEN			17
 
 #define REM_CMD_ARGC				4
-#define ADD_CMD_ARGC				5
+#define ADD_CMD_ARGC				7
 
 #define ENABLE_PROMISC
 

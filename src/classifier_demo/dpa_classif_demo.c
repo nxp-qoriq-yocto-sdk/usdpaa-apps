@@ -102,6 +102,7 @@ const uint8_t			mac_src[ETH_ALEN] = { 0x00, 0x1e, 0xc9, 0x49, 0xbb, 0xbe  };
 struct fmc_model_t		cmodel;
 
 t_Handle			ccnodes[3];
+t_Handle 			pcd_dev;
 
 static struct hash_table	*hash_ipv4, *hash_ipv6;
 
@@ -117,6 +118,12 @@ static int			dscp_td = DPA_OFFLD_DESC_NONE;
 
 static int			fwd_hmd_ipv4[MAX_NUM_OF_IPv4_KEYS];
 static int			fwd_hmd_ipv6[MAX_NUM_OF_IPv6_KEYS];
+
+static int			upd_hmd_ipv4[MAX_NUM_OF_IPv4_KEYS];
+static int			upd_hmd_ipv6[MAX_NUM_OF_IPv6_KEYS];
+
+static int			nat_hmd_ipv4[MAX_NUM_OF_IPv4_KEYS];
+static int			nat_hmd_ipv6[MAX_NUM_OF_IPv6_KEYS];
 
 static bool			populate_dscp;
 
@@ -200,13 +207,17 @@ void clean_up(void)
 	}
 
 	/* Free header manipulation operations */
-	for (i = 0; i < MAX_NUM_OF_IPv4_KEYS; i++)
-		if (fwd_hmd_ipv4[i] != DPA_OFFLD_DESC_NONE)
-			dpa_classif_free_hm(fwd_hmd_ipv4[i]);
+	for (i = 0; i < MAX_NUM_OF_IPv4_KEYS; i++) {
+		dpa_classif_free_hm(fwd_hmd_ipv4[i]);
+		dpa_classif_free_hm(nat_hmd_ipv4[i]);
+		dpa_classif_free_hm(upd_hmd_ipv4[i]);
+	}
 
-	for (i = 0; i < MAX_NUM_OF_IPv6_KEYS; i++)
-		if (fwd_hmd_ipv6[i] != DPA_OFFLD_DESC_NONE)
-			dpa_classif_free_hm(fwd_hmd_ipv6[i]);
+	for (i = 0; i < MAX_NUM_OF_IPv6_KEYS; i++) {
+		dpa_classif_free_hm(fwd_hmd_ipv6[i]);
+		dpa_classif_free_hm(nat_hmd_ipv6[i]);
+		dpa_classif_free_hm(upd_hmd_ipv6[i]);
+	}
 
 	/* Release DPA Classifier library */
 	dpa_classif_lib_exit();
@@ -321,6 +332,13 @@ int ppam_init(void)
 	printf("dpa_classifier_demo is assuming FMan:%d and MAC:%d\n",
 		ppam_args.fm, ppam_args.port);
 
+	sprintf(object_name, "fm%d/pcd", ppam_args.fm);
+	pcd_dev = fmc_get_handle(&cmodel, object_name);
+	if (!pcd_dev) {
+		error(0, EINVAL, "Failed to acquire the pcd handle. Are you using the correct parameters for this test and platform?");
+		return -EINVAL;
+	}
+
 	/* Get the CC Node Handle */
 	sprintf(object_name, "fm%d/port/MAC/%d/ccnode/3_tuple_ipv4_classif",
 		ppam_args.fm, ppam_args.port);
@@ -355,6 +373,8 @@ int ppam_init(void)
 
 	for (i = 0; i < MAX_NUM_OF_IPv4_KEYS; i++) {
 		fwd_hmd_ipv4[i] = DPA_OFFLD_DESC_NONE;
+		upd_hmd_ipv4[i] = DPA_OFFLD_DESC_NONE;
+		nat_hmd_ipv4[i] = DPA_OFFLD_DESC_NONE;
 		/*
 		 * Add the counters control blocks to the available IPv4
 		 * counters list.
@@ -364,6 +384,8 @@ int ppam_init(void)
 
 	for (i = 0; i < MAX_NUM_OF_IPv6_KEYS; i++) {
 		fwd_hmd_ipv6[i] = DPA_OFFLD_DESC_NONE;
+		upd_hmd_ipv6[i] = DPA_OFFLD_DESC_NONE;
+		nat_hmd_ipv6[i] = DPA_OFFLD_DESC_NONE;
 		/*
 		 * Add the counters control blocks to the available IPv6
 		 * counters list.
@@ -1101,7 +1123,7 @@ int populate_exact_match_table(int tbl_desc, int proto, uint8_t *key_byte)
 
 	switch (proto) {
 	case IPv4:
-		action.next_table_params.hmd = fwd_hmd_ipv4[inserted_ipv4_keys];
+		action.next_table_params.hmd = upd_hmd_ipv4[inserted_ipv4_keys];
 		/* Update lookup key */
 		key.size = APP_TABLE_KEY_SIZE_IPv4;
 		memset(key.mask, 0xff, APP_TABLE_KEY_SIZE_IPv4);
@@ -1150,7 +1172,7 @@ int populate_exact_match_table(int tbl_desc, int proto, uint8_t *key_byte)
 		}
 		break;
 	case IPv6:
-		action.next_table_params.hmd = fwd_hmd_ipv6[inserted_ipv6_keys];
+		action.next_table_params.hmd = upd_hmd_ipv6[inserted_ipv6_keys];
 		/* Update lookup key */
 		key.size = APP_TABLE_KEY_SIZE_IPv6;
 		memset(key.mask, 0xff, APP_TABLE_KEY_SIZE_IPv6);
@@ -1656,18 +1678,17 @@ static int ppac_cli_classif_rem_cmd(int argc, char *argv[])
 
 static int ppac_cli_classif_add_cmd(int argc, char *argv[])
 {
-	int i = 0, j = 0, err = 1, pos = 0, offset = 0;
+	int i = 0, j = 0, k = 0, err = 1, pos = 0, offset = 0;
 	uint8_t key_ipv4[APP_TABLE_KEY_SIZE_IPv4];
 	uint8_t key_ipv6[APP_TABLE_KEY_SIZE_IPv6];
 	uint8_t mac[ETH_ALEN];
-	char data[100], object_name[100];
-
-	t_Handle				hm_fwd;
+	char data[100];
 
 	struct sockaddr_in			addr4;
 	struct sockaddr_in6			addr6;
 	struct dpa_cls_hm_fwd_params		fwd_params;
-	struct dpa_cls_hm_fwd_resources		fwd_hm_res;
+	struct dpa_cls_hm_update_params 	upd_params;
+	struct dpa_cls_hm_nat_params 		nat_hm_params;
 
 	if (argc != ADD_CMD_ARGC) {
 		printf("Not a valid add classification key command! Please try again!\n");
@@ -1675,12 +1696,19 @@ static int ppac_cli_classif_add_cmd(int argc, char *argv[])
 		return -EINVAL;
 	}
 
-	memset(&fwd_params, 0, sizeof(fwd_params));
-	memset(&fwd_hm_res, 0, sizeof(fwd_hm_res));
+	memset(&upd_params, 0, sizeof(struct dpa_cls_hm_update_params));
+	upd_params.fm_pcd = pcd_dev;
+	upd_params.update.l3.field_flags = DPA_CLS_HM_IP_UPDATE_TTL_HOPL_DECREMENT;
 
+	memset(&nat_hm_params, 0, sizeof(struct dpa_cls_hm_nat_params));
+	nat_hm_params.fm_pcd = pcd_dev;
+	nat_hm_params.flags = DPA_CLS_HM_NAT_UPDATE_SPORT | DPA_CLS_HM_NAT_UPDATE_DPORT;
+	nat_hm_params.type = DPA_CLS_HM_NAT_TYPE_TRADITIONAL;
+
+	memset(&fwd_params, 0, sizeof(fwd_params));
 	memcpy(fwd_params.eth.macsa, mac_src, ETH_ALEN);
 	fwd_params.out_if_type = DPA_CLS_HM_IF_TYPE_ETHERNET;
-	fwd_params.fm_pcd = NULL;
+	fwd_params.fm_pcd = pcd_dev;
 
 	if (!strcmp(argv[0], "add4")) {
 		if (inserted_ipv4_keys == MAX_NUM_OF_IPv4_KEYS) {
@@ -1689,7 +1717,7 @@ static int ppac_cli_classif_add_cmd(int argc, char *argv[])
 			return -ENOSPC;
 		}
 
-		for (i = 1; i < argc - 2; i++) {
+		for (i = 1; i < argc - 4; i++) {
 			err = inet_pton(AF_INET, argv[i], &(addr4.sin_addr));
 			if (err != 1) {
 				printf("Invalid IP address %s entered! Please try again!\n",
@@ -1697,18 +1725,26 @@ static int ppac_cli_classif_add_cmd(int argc, char *argv[])
 				return -EINVAL;
 			}
 			for (j = IPv4_LEN - 1; j >= 0; j--)
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+				key_ipv4[pos+j] = (addr4.sin_addr.s_addr >>
+								(j * 8)) & 0xFF;
+			pos += IPv4_LEN;
+#else
 				key_ipv4[pos++] = (addr4.sin_addr.s_addr >>
 								(j * 8)) & 0xFF;
+#endif
 		}
 
 		if (!strcmp(argv[i], "TCP") ||
 				!strcmp(argv[i], "tcp") ||
 				!strcmp(argv[i], "6")) {
 			key_ipv4[pos] = 0x6;
+			nat_hm_params.proto = DPA_CLS_NAT_PROTO_TCP;
 		} else if (!strcmp(argv[i], "UDP") ||
 				!strcmp(argv[i], "udp") ||
 				!strcmp(argv[i], "17")) {
 			key_ipv4[pos] = 0x11;
+			nat_hm_params.proto = DPA_CLS_NAT_PROTO_UDP;
 		} else {
 			printf("Not a valid protocol specified! Please chose between TCP and UDP and try again!\n");
 			return -EINVAL;
@@ -1721,33 +1757,52 @@ static int ppac_cli_classif_add_cmd(int argc, char *argv[])
 
 		memcpy(fwd_params.eth.macda, mac, ETH_ALEN);
 
-		sprintf(object_name, "fm%d/hdr/fwd4_%d", ppam_args.fm,
-							inserted_ipv4_keys + 1);
-		hm_fwd = fmc_get_handle(&cmodel, object_name);
-		if (!hm_fwd) {
-			error(0, -EINVAL, "Cannot obtain handle for IPv4 forwarding header manipulation %d",
-					inserted_ipv4_keys + 1);
-			return -EINVAL;
-		}
-
-		fwd_hm_res.fwd_node = hm_fwd;
-
 		for (j = 0; j < APP_TABLE_KEY_SIZE_IPv4; j++) {
 			sprintf(&data[offset], " %02x", key_ipv4[j]);
 			offset += 3;
 		}
 
-		data[offset] = 0;
-
 		err = dpa_classif_set_fwd_hm(&fwd_params,
 				DPA_OFFLD_DESC_NONE,
-				&fwd_hmd_ipv4[inserted_ipv4_keys], true,
-				&fwd_hm_res);
+				&fwd_hmd_ipv4[inserted_ipv4_keys], false, NULL);
 		if (err < 0) {
 			error(0, -err, "Failed to set up forwarding header manipulation.\n");
 			return -err;
 		}
 
+		data[offset] = 0;
+		for (k = 0; k < strlen(argv[i + 2]); k++)
+			if (!isdigit(argv[i + 2][k])) {
+				error(0, EINVAL, "%s is not a valid TCP/UDP src port number", argv[i + 2]);
+				return -EINVAL;
+			}
+		for (k = 0; k < strlen(argv[i + 3]); k++)
+			if (!isdigit(argv[i + 3][k])) {
+				error(0, EINVAL, "%s is not a valid TCP/UDP dst port number", argv[i + 3]);
+				return -EINVAL;
+			}
+
+		nat_hm_params.sport = strtoul(argv[i + 2], NULL, 10);
+		nat_hm_params.dport = strtoul(argv[i + 3], NULL, 10);
+
+		err = dpa_classif_set_nat_hm(&nat_hm_params,
+			fwd_hmd_ipv4[inserted_ipv4_keys], &nat_hmd_ipv4[inserted_ipv4_keys], false,
+			NULL);
+		if (err < 0) {
+			error(0, -err, "Failed to set up NAT type header "
+				"manipulation #%d.\n", i+1);
+			return err;
+		}
+
+		upd_params.op_flags = DPA_CLS_HM_UPDATE_IPv4_UPDATE;
+
+		err = dpa_classif_set_update_hm(&upd_params, nat_hmd_ipv4[inserted_ipv4_keys],
+			&upd_hmd_ipv4[inserted_ipv4_keys], true, NULL);
+
+		if (err < 0) {
+			error(0, -err, "Failed to set up TTL_DEC header manipulation.\n");
+			return -err;
+		}
 		err = populate_exact_match_table(ipv4_td, IPv4, key_ipv4);
 		if (err != 0) {
 			printf("Cannot add IPv4 Classification key %s. Please try again!\n",
@@ -1766,7 +1821,7 @@ static int ppac_cli_classif_add_cmd(int argc, char *argv[])
 			return -ENOSPC;
 		}
 
-		for (i = 1; i < argc - 2; i++) {
+		for (i = 1; i < argc - 4; i++) {
 			err = inet_pton(AF_INET6, argv[i], &(addr6.sin6_addr));
 			if (err != 1) {
 				printf("Invalid IP address %s entered! Please try again!\n",
@@ -1781,10 +1836,12 @@ static int ppac_cli_classif_add_cmd(int argc, char *argv[])
 				!strcmp(argv[i], "tcp") ||
 				!strcmp(argv[i], "6")) {
 			key_ipv6[pos] = 0x6;
+			nat_hm_params.proto = DPA_CLS_NAT_PROTO_TCP;
 		} else if (!strcmp(argv[i], "UDP") ||
 				!strcmp(argv[i], "udp") ||
 				!strcmp(argv[i], "17")) {
 			key_ipv6[pos] = 0x11;
+			nat_hm_params.proto = DPA_CLS_NAT_PROTO_UDP;
 		} else {
 			printf("Not a valid protocol specified! Please chose between TCP and UDP and try again!\n");
 			return -EINVAL;
@@ -1797,33 +1854,51 @@ static int ppac_cli_classif_add_cmd(int argc, char *argv[])
 
 		memcpy(fwd_params.eth.macda, mac, ETH_ALEN);
 
-		sprintf(object_name, "fm%d/hdr/fwd6_%d", ppam_args.fm,
-							inserted_ipv6_keys + 1);
-		hm_fwd = fmc_get_handle(&cmodel, object_name);
-		if (!hm_fwd) {
-			error(0, EINVAL, "Cannot obtain handle for IPv6 forwarding header manipulation %d",
-					inserted_ipv6_keys + 1);
-			return -EINVAL;
-		}
-
-		fwd_hm_res.fwd_node = hm_fwd;
-
 		for (j = 0; j < APP_TABLE_KEY_SIZE_IPv6; j++) {
 			sprintf(&data[offset], " %02x", key_ipv6[j]);
 			offset += 3;
 		}
 
-		data[offset] = 0;
-
 		err = dpa_classif_set_fwd_hm(&fwd_params,
 				DPA_OFFLD_DESC_NONE,
-				&fwd_hmd_ipv6[inserted_ipv6_keys], true,
-				&fwd_hm_res);
+				&fwd_hmd_ipv6[inserted_ipv6_keys], false, NULL);
 		if (err < 0) {
 			error(0, -err, "Failed to set up forwarding header manipulation.\n");
+			return -err;
+		}
+
+		data[offset] = 0;
+		for (k = 0; k < strlen(argv[i + 2]); k++)
+			if (!isdigit(argv[i + 2][k])) {
+				error(0, EINVAL, "%s is not a valid UDP/TCP src port number", argv[i + 2]);
+				return -EINVAL;
+			}
+		for (k = 0; k < strlen(argv[i + 3]); k++)
+			if (!isdigit(argv[i + 3][k])) {
+				printf("%s is not a valid TCP/UDP dst port number", argv[i + 3]);
+				return -EINVAL;
+			}
+
+		nat_hm_params.sport = strtoul(argv[i + 2], NULL, 10);
+		nat_hm_params.dport = strtoul(argv[i + 3], NULL, 10);
+
+		err = dpa_classif_set_nat_hm(&nat_hm_params,
+			fwd_hmd_ipv6[inserted_ipv6_keys], &nat_hmd_ipv6[inserted_ipv6_keys], false,
+			NULL);
+		if (err < 0) {
+			error(0, -err, "Failed to set up NAT type header "
+				"manipulation #%d.\n", i+1);
 			return err;
 		}
 
+		upd_params.op_flags = DPA_CLS_HM_UPDATE_IPv6_UPDATE;
+
+		err = dpa_classif_set_update_hm(&upd_params, nat_hmd_ipv6[inserted_ipv6_keys],
+			&upd_hmd_ipv6[inserted_ipv6_keys], true, NULL);
+		if (err < 0) {
+			error(0, -err, "Failed to set up TTL_DEC header manipulation.\n");
+			return -err;
+		}
 		err = populate_exact_match_table(ipv6_td, IPv6, key_ipv6);
 		if (err != 0) {
 			printf("Cannot add IPv6 Classification key %s. Please try again!\n",
