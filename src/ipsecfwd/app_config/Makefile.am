@@ -38,7 +38,8 @@ dist_DATA = ipsecfwd_enc_20G.sh ipsecfwd_enc_22G.sh ipsecfwd_dec_20G.sh \
 	ipsecfwd_t1040qds_mix_7G.sh ipsecfwd_t4240_dec_48G.sh \
 	ipsecfwd_t4240_enc_48G.sh ipsecfwd_t4240_mix_48G.sh \
 	ipsecfwd_b4860qds_mix_20G.sh ipsecfwd_t1024_mix_12G.sh \
-	ipsecfwd_t1023_mix_4.5G.sh ipsecfwd_t1042d4_mix_4G.sh
+	ipsecfwd_t1023_mix_4.5G.sh ipsecfwd_t1042d4_mix_4G.sh \
+	ipsecfwd_ls1043a_mix_13G.sh
 
 AM_CFLAGS := -I$(TOP_LEVEL)/src/ipsecfwd/lib -I$(TOP_LEVEL)/src/ipsecfwd/include
 AM_CFLAGS += -lusdpaa_of $(LIBRTA_CFLAGS)
@@ -91,3 +92,5 @@ ipsecfwd_t1023_mix_4.5G.sh_install = $(INSTALL_BIN)
 ipsecfwd_t1023_mix_4.5G.sh_install_flags = $(INSTALL_BIN_FLAGS)
 ipsecfwd_t1042d4_mix_4G.sh_install = $(INSTALL_BIN)
 ipsecfwd_t1042d4_mix_4G.sh_install_flags = $(INSTALL_BIN_FLAGS)
+ipsecfwd_ls1043a_mix_13G.sh_install = $(INSTALL_BIN)
+ipsecfwd_ls1043a_mix_13G.sh_install_flags = $(INSTALL_BIN_FLAGS)

@@ -49,12 +49,13 @@ void ipsec_create_compound_fd(struct qm_fd *fd, const struct qm_fd *old_fd,
 #define ESP_HDR_LEN	12
 #define PRIV_DATA_SIZE	32
 
+	uint16_t ip_tot_len = cpu_to_be16(ip_hdr->tot_len);
 	if (mode == ENCRYPT)
 		size = PRIV_DATA_SIZE + ETHER_HDR_LEN + ESP_HDR_LEN +
-			sizeof(struct iphdr) + ip_hdr->tot_len + PAD_LEN +
+			sizeof(struct iphdr) + ip_tot_len + PAD_LEN +
 			MAX_PADDING_LEN;
 	else
-		size = ip_hdr->tot_len;
+		size = ip_tot_len;
 
 	sg = __dma_mem_ptov(qm_fd_addr(old_fd));
 	memset(sg, 0, 2*sizeof(struct qm_sg_entry));
@@ -78,7 +79,7 @@ void ipsec_create_compound_fd(struct qm_fd *fd, const struct qm_fd *old_fd,
 	/* input buffer */
 	sg++;
 	qm_sg_entry_set64(sg, qm_fd_addr_get64(old_fd));
-	sg->length = ip_hdr->tot_len;
+	sg->length = ip_tot_len;
 	if (qm_fd_contig == old_fd->format) {
 		sg->offset = old_fd->offset + ETHER_HDR_LEN;
 		sg->extension = 0;
@@ -96,6 +97,8 @@ void ipsec_create_compound_fd(struct qm_fd *fd, const struct qm_fd *old_fd,
 	fd->_format1 = qm_fd_compound;
 	fd->cong_weight = 0;
 	fd->cmd = 0;
+	cpu_to_hw_sg(sg);
+	cpu_to_hw_sg(++sg);
 }
 
 void ipsec_create_simple_fd(struct qm_fd *simple_fd,
@@ -104,6 +107,7 @@ void ipsec_create_simple_fd(struct qm_fd *simple_fd,
 	struct qm_sg_entry *sg;
 
 	sg = __dma_mem_ptov(qm_fd_addr(compound_fd));
+	hw_sg_to_cpu(sg);
 	qm_fd_addr_set64(simple_fd, qm_sg_addr(sg));
 	if (0 == sg->extension)
 		simple_fd->format = qm_fd_contig;
@@ -129,7 +133,7 @@ void ipsec_build_outer_ip_hdr(struct iphdr *ip_hdr,
 	ip_hdr->version = IPVERSION;
 	ip_hdr->ihl = sizeof(*ip_hdr) / sizeof(uint32_t);
 	ip_hdr->tos = 0;
-	ip_hdr->tot_len = sizeof(*ip_hdr);
+	ip_hdr->tot_len = cpu_to_be16(sizeof(*ip_hdr));
 	ip_hdr->id = 0;
 	ip_hdr->frag_off = 0;
 	ip_hdr->ttl = IPDEFTTL;

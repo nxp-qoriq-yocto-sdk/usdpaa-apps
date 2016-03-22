@@ -58,7 +58,7 @@ enum IP_STATUS ipsec_encap_send(const struct ppam_rx_hash *ctxt,
 
 		fd2.cmd = 0;
 		fd2._format1 = qm_fd_contig;
-		fd2.length20 = ip_hdr->tot_len;
+		fd2.length20 = cpu_to_be16(ip_hdr->tot_len);
 		fd2.offset = fd->offset + ETHER_HDR_LEN;
 		fd2.bpid = sec_bpid; /*Release to BPool used by SEC*/
 	}

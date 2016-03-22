@@ -134,7 +134,7 @@ int32_t ipsecfwd_create_sa(struct app_ctrl_ipsec_info *ipsec_info,
 	ipsec_tunnel_config_entry->ealg = &ipsec_info->ealg;
 	ipsec_tunnel_config_entry->aalg = &ipsec_info->aalg;
 	ipsec_tunnel_config_entry->tunnel_id = g_tunnel_id;
-	ipsec_tunnel_config_entry->spi = ipsec_info->id.spi;
+	ipsec_tunnel_config_entry->spi = cpu_to_be32(ipsec_info->id.spi);
 	ipsec_tunnel_config_entry->is_esn = ipsec_info->id.is_esn;
 
 	if (encryption_mode == ENCRYPT) {
