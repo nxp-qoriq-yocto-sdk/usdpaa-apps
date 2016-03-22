@@ -50,7 +50,7 @@
  * @return size of descriptor written in words
  **/
 static inline int cnstr_shdsc_ipsec_encap_hb(uint32_t *descbuf,
-					     bool ps,
+					     bool ps, bool swap,
 					     struct ipsec_encap_pdb *pdb,
 					     struct alginfo *cipherdata,
 					     struct alginfo *authdata)
@@ -64,15 +64,17 @@ static inline int cnstr_shdsc_ipsec_encap_hb(uint32_t *descbuf,
 	REFERENCE(phdr);
 
 	PROGRAM_CNTXT_INIT(p, descbuf, 0);
+	if (swap)
+		PROGRAM_SET_BSWAP(p);
 	if (ps)
 		PROGRAM_SET_36BIT_ADDR(p);
 	phdr = SHR_HDR(p, SHR_WAIT, hdr, 0);
-	COPY_DATA(p, (uint8_t *)pdb,
-		  sizeof(struct ipsec_encap_pdb) + pdb->ip_hdr_len);
+	__rta_copy_ipsec_encap_pdb(p, pdb, cipherdata->algtype);
+	COPY_DATA(p, pdb->ip_hdr, pdb->ip_hdr_len);
 	SET_LABEL(p, hdr);
 	pkeyjmp = JUMP(p, keyjmp, LOCAL_JUMP, ALL_TRUE, BOTH|SHRD);
 	KEY(p, MDHA_SPLIT_KEY, authdata->key_enc_flags, authdata->key,
-	    authdata->keylen, INLINE_KEY(authdata));
+			authdata->keylen, INLINE_KEY(authdata));
 	KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
 	    cipherdata->keylen, INLINE_KEY(cipherdata));
 	SET_LABEL(p, keyjmp);
@@ -130,9 +132,9 @@ void *create_encapsulation_sec_descriptor(struct ipsec_tunnel_t *sa,
 	if (sa->is_esn)
 		pdb->seq_num_ext_hi = (uint32_t)(sa->seq_num >> 32);
 	pdb->seq_num = (uint32_t)(sa->seq_num);
-	pdb->spi = sa->spi;
+	pdb->spi = cpu_to_be32(sa->spi);
 	pdb->ip_hdr_len = sizeof(struct iphdr);
-	pdb->options = PDBOPTS_ESP_TUNNEL | PDBOPTS_ESP_INCIPHDR |
+	pdb->options |= PDBOPTS_ESP_TUNNEL | PDBOPTS_ESP_INCIPHDR |
 		       PDBOPTS_ESP_IPHDRSRC | PDBOPTS_ESP_IVSRC |
 		       PDBOPTS_ESP_UPDATE_CSUM;
 	if (sa->is_esn)
@@ -159,12 +161,12 @@ void *create_encapsulation_sec_descriptor(struct ipsec_tunnel_t *sa,
  */
 	if (sa->hb_tunnel) {
 		desc_len = cnstr_shdsc_ipsec_encap_hb((uint32_t *)buff_start,
-						      true, pdb, &cipher,
-						      &auth);
+						      true, SWAP_DESCRIPTOR, pdb,
+						      &cipher, &auth);
 	} else {
 		desc_len = cnstr_shdsc_ipsec_encap((uint32_t *)buff_start,
-						   true, false, pdb, &cipher,
-						   &auth);
+						true, SWAP_DESCRIPTOR, pdb,
+						&cipher, &auth);
 	}
 
 	free(pdb);
@@ -177,6 +179,9 @@ void *create_encapsulation_sec_descriptor(struct ipsec_tunnel_t *sa,
 	preheader_initdesc->prehdr.lo.field.pool_id = sec_bpid;
 	preheader_initdesc->prehdr.lo.field.pool_buffer_size =
 		(uint16_t)(DMA_MEM_BP3_SIZE);
+
+	preheader_initdesc->prehdr.hi.word = cpu_to_be32(preheader_initdesc->prehdr.hi.word);
+	preheader_initdesc->prehdr.lo.word = cpu_to_be32(preheader_initdesc->prehdr.lo.word);
 
 	return preheader_initdesc;
 }
@@ -201,7 +206,7 @@ void *create_encapsulation_sec_descriptor(struct ipsec_tunnel_t *sa,
  * @return size of descriptor written in words
  **/
 static inline int cnstr_shdsc_ipsec_decap_hb(uint32_t *descbuf,
-					     bool ps,
+					     bool ps, bool swap,
 					     struct ipsec_decap_pdb *pdb,
 					     struct alginfo *cipherdata,
 					     struct alginfo *authdata)
@@ -215,14 +220,16 @@ static inline int cnstr_shdsc_ipsec_decap_hb(uint32_t *descbuf,
 	REFERENCE(phdr);
 
 	PROGRAM_CNTXT_INIT(p, descbuf, 0);
+	if (swap)
+		PROGRAM_SET_BSWAP(p);
 	if (ps)
 		PROGRAM_SET_36BIT_ADDR(p);
 	phdr = SHR_HDR(p, SHR_WAIT, hdr, 0);
-	COPY_DATA(p, (uint8_t *)pdb, sizeof(struct ipsec_decap_pdb));
+	__rta_copy_ipsec_decap_pdb(p, pdb, cipherdata->algtype);
 	SET_LABEL(p, hdr);
 	pkeyjmp = JUMP(p, keyjmp, LOCAL_JUMP, ALL_TRUE, BOTH|SHRD);
 	KEY(p, MDHA_SPLIT_KEY, authdata->key_enc_flags, authdata->key,
-	    authdata->keylen, INLINE_KEY(authdata));
+			authdata->keylen, INLINE_KEY(authdata));
 	KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
 	    cipherdata->keylen, INLINE_KEY(cipherdata));
 	SET_LABEL(p, keyjmp);
@@ -273,7 +280,7 @@ void
 	pdb.options = (sizeof(struct iphdr) << PDBHDRLEN_ESP_DECAP_SHIFT) &
 			PDBHDRLEN_MASK;
 
-	pdb.options = PDBOPTS_ESP_TUNNEL | PDBOPTS_ESP_OUTFMT |
+	pdb.options |= PDBOPTS_ESP_TUNNEL | PDBOPTS_ESP_OUTFMT |
 		      PDBOPTS_ESP_ARSNONE;
 	if (sa->is_esn)
 		pdb.options |= PDBOPTS_ESP_ESN;
@@ -297,11 +304,12 @@ void
  */
 	if (sa->hb_tunnel) {
 		desc_len = cnstr_shdsc_ipsec_decap_hb((uint32_t *)buff_start,
-						      true, &pdb, &cipher,
-						      &auth);
+						true, SWAP_DESCRIPTOR, &pdb,
+						&cipher, &auth);
 	} else {
 		desc_len = cnstr_shdsc_ipsec_decap((uint32_t *)buff_start, true,
-						   false, &pdb, &cipher, &auth);
+						SWAP_DESCRIPTOR, &pdb,
+						&cipher, &auth);
 	}
 
 	pr_debug("Desc len in %s is %x\n", __func__, desc_len);
@@ -313,6 +321,9 @@ void
 	preheader_initdesc->prehdr.lo.field.pool_id = sec_bpid;
 	preheader_initdesc->prehdr.lo.field.pool_buffer_size =
 		(uint16_t)(DMA_MEM_BP3_SIZE);
+
+	preheader_initdesc->prehdr.hi.word = cpu_to_be32(preheader_initdesc->prehdr.hi.word);
+	preheader_initdesc->prehdr.lo.word = cpu_to_be32(preheader_initdesc->prehdr.lo.word);
 
 	return preheader_initdesc;
 }

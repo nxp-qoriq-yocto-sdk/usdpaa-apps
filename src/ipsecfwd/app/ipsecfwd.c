@@ -853,7 +853,7 @@ static int ppam_interface_init(struct ppam_interface *p,
 	p->ifnum = fif->fman_idx * 100 + iface;
 	p->mtu = ETHERMTU;
 	p->header_len = ETHER_HDR_LEN;
-	p->mask = IN_CLASSC_NET;
+	p->mask = ntohl(IN_CLASSC_NET);
 
 	p->num_tx_fqids = num_tx_fqs;
 	p->tx_fqids = malloc(p->num_tx_fqids * sizeof(*p->tx_fqids));

@@ -44,16 +44,24 @@ struct preheader_t {
 	union {
 		uint32_t word;
 		struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 			unsigned int rsls:1;
 			unsigned int rsvd1_15:15;
 			unsigned int rsvd16_24:9;
 			unsigned int idlen:7;
+#else
+			unsigned int idlen:7;
+			unsigned int rsvd16_24:9;
+			unsigned int rsvd1_15:15;
+			unsigned int rsls:1;
+#endif
 		} field;
 	} __PACKED hi;
 
 	union {
 		uint32_t word;
 		struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 			unsigned int rsvd32_33:2;
 			unsigned int fsgt:1;
 			unsigned int lng:1;
@@ -62,6 +70,16 @@ struct preheader_t {
 			unsigned int add_buf:1;
 			uint8_t pool_id;
 			uint16_t pool_buffer_size;
+#else
+			uint16_t pool_buffer_size;
+			uint8_t pool_id;
+			unsigned int add_buf:1;
+			unsigned int abs:1;
+			unsigned int offset:2;
+			unsigned int lng:1;
+			unsigned int fsgt:1;
+			unsigned int rsvd32_33:2;
+#endif
 		} field;
 	} __PACKED lo;
 } __PACKED;
