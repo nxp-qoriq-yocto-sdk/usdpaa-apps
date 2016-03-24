@@ -1724,15 +1724,8 @@ static int ppac_cli_classif_add_cmd(int argc, char *argv[])
 						argv[i]);
 				return -EINVAL;
 			}
-			for (j = IPv4_LEN - 1; j >= 0; j--)
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-				key_ipv4[pos+j] = (addr4.sin_addr.s_addr >>
-								(j * 8)) & 0xFF;
+			*((u32*) &key_ipv4[pos]) = addr4.sin_addr.s_addr;
 			pos += IPv4_LEN;
-#else
-				key_ipv4[pos++] = (addr4.sin_addr.s_addr >>
-								(j * 8)) & 0xFF;
-#endif
 		}
 
 		if (!strcmp(argv[i], "TCP") ||
