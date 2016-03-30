@@ -49,7 +49,7 @@
 #define MAX_NUM_OF_DSCP_KEYS			12
 					/* NUM_OF_QUEUES * NUM_OF_CHANNELS */
 
-#if defined(B4860)
+#if defined(FMAN_V3H)
 #define CCSCN_THRESH_IN				64
 #define CCSCN_THRESH_OUT			32
 #define LNI_EGRESS_SPEED			500000000 /* bps -> 500mbps */
@@ -88,7 +88,7 @@ struct cgr_counter {
 	uint32_t			cgr_bytes;
 	uint32_t			cgr_frames;
 };
-#endif
+#endif /* defined(FMAN_V3H) */
 
 enum ceetm_clean {
 	clean_sp,
@@ -100,20 +100,20 @@ enum ceetm_clean {
 
 struct traffic_counters {
 	struct eth_counter eth;
-#if defined(B4860)
+#if defined(FMAN_V3H)
 	struct cq_counter cq[NUM_OF_CHANNELS * NUM_OF_QUEUES];
 	struct cgr_counter cgr[NUM_OF_CHANNELS];
-#endif
+#endif /* defined(FMAN_V3H) */
 };
 
 int ceetm_init(int fman, int deq_sp);
 int ceetm_free(enum ceetm_clean idx);
 
 int create_ceetm_counters(int dpa_stats_id);
-#if defined(B4860)
+#if defined(FMAN_V3H)
 int ceetm_get_counters_sync(struct dpa_stats_cnt_request_params req_params,
 		int *cnts_len);
-#endif
+#endif /* defined(FMAN_V3H) */
 void print_ceetm_counters(struct traffic_counters *cnts);
 
 #endif /* __CEETM_API_H */

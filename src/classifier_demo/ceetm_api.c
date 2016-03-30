@@ -36,7 +36,7 @@
 int				tmg_cnt_id = DPA_OFFLD_INVALID_OBJECT_ID;
 int				cng_cnt_id = DPA_OFFLD_INVALID_OBJECT_ID;
 
-#if defined(B4860)
+#if defined(FMAN_V3H)
 struct interface		intf;
 static struct worker		*worker;
 
@@ -46,12 +46,12 @@ static void ceetm_congestion_cb(struct qm_ceetm_ccg *ccg, void *cb_ctx,
 	printf("%s,  CEETM CCGR -> congestion %s\n", __func__,
 					congested ? "entry" : "exit");
 }
-#endif
+#endif /* defined(FMAN_V3H) */
 
 int ceetm_free(enum ceetm_clean idx)
 {
 	int err = 0;
-#if defined(B4860)
+#if defined(FMAN_V3H)
 	int i = 0, j = 0;
 
 	switch (idx) {
@@ -92,7 +92,7 @@ int ceetm_free(enum ceetm_clean idx)
 			error(0, -err, "Cannot release sp %d\n", intf.sp->idx);
 		break;
 	}
-#endif
+#endif /* defined(FMAN_V3H) */
 
 	return err;
 }
@@ -100,7 +100,7 @@ int ceetm_free(enum ceetm_clean idx)
 int ceetm_init(int fman, int deq_sp)
 {
 	int err = 0;
-#if defined(B4860)
+#if defined(FMAN_V3H)
 	int i = 0, j = 0;
 	uint8_t prio_a = 1, prio_b = 2;
 	uint16_t we_mask;
@@ -344,14 +344,14 @@ int ceetm_init(int fman, int deq_sp)
 		error(0, -err, "Cannot allocate memory for get_stats thread\n");
 		return -ENOMEM;
 	}
-#endif
+#endif /* defined(FMAN_V3H) */
 
 	return err;
 }
 
 int create_ceetm_counters(int dpa_stats_id)
 {
-#if defined(B4860)
+#if defined(FMAN_V3H)
 	int err = 0, i = 0, j = 0;
 	struct dpa_stats_cls_cnt_params cls_params;
 	void **cq_array;
@@ -403,11 +403,11 @@ int create_ceetm_counters(int dpa_stats_id)
 		return err;
 	}
 	printf("Successfully created DPA Stats counter: %d\n", cng_cnt_id);
-#endif
+#endif /* defined(FMAN_V3H) */
 	return 0;
 }
 
-#if defined(B4860)
+#if defined(FMAN_V3H)
 static void *worker_fn(void *args)
 {
 	int err = 0;
@@ -474,11 +474,11 @@ int ceetm_get_counters_sync(struct dpa_stats_cnt_request_params req_params,
 	}
 	return 0;
 }
-#endif
+#endif /* defined(FMAN_V3H) */
 
 void print_ceetm_counters(struct traffic_counters *cnts)
 {
-#if defined(B4860)
+#if defined(FMAN_V3H)
 	int i = 0;
 	printf("\n\nCLASS QUEUE\n");
 	printf("CQ::      BYTES   FRAMES\n");
@@ -491,5 +491,5 @@ void print_ceetm_counters(struct traffic_counters *cnts)
 	for (i = 0; i < NUM_OF_CHANNELS; i++)
 		printf("%3d %12d %8d\n", i, cnts->cgr[i].cgr_bytes,
 						cnts->cgr[i].cgr_frames);
-#endif
+#endif /* defined(FMAN_V3H) */
 }

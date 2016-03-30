@@ -142,9 +142,9 @@ static int			inserted_ipv6_keys;
 
 static void			*storage;
 
-#if defined(B4860)
+#if defined(FMAN_V3H)
 extern struct interface		intf;
-#endif
+#endif /* defined(FMAN_V3H) */
 
 
 void clean_up(void)
@@ -662,11 +662,11 @@ static int populate_dscp_table(void)
 					APP_DSCP_TABLE_KEY_SIZE);
 
 			/* Update action */
-#if defined(B4860)
+#if defined(FMAN_V3H)
 			action.enq_params.new_fqid = intf.lfq[i][j]->idx;
 #else
 			action.enq_params.new_fqid = txfq;
-#endif
+#endif /* defined(FMAN_V3H) */
 			action.enq_params.override_fqid = TRUE;
 
 			modify.action = &action;
@@ -1423,11 +1423,11 @@ static int get_cnts_statistics(enum dpa_stats_op op)
 	struct dpa_stats_cnt_request_params req_params;
 	int cnts_len = 0, err = 0;
 	int classif_cnt_id[3] = {emd_cnt_id, em4_cnt_id, em6_cnt_id};
-#if defined(B4860)
+#if defined(FMAN_V3H)
 	int traffic_cnt_id[3] = {eth_cnt_id, tmg_cnt_id, cng_cnt_id};
 #else
 	int traffic_cnt_id[3] = {eth_cnt_id};
-#endif
+#endif /* defined(FMAN_V3H) */
 	int all_cnt_id[sizeof(classif_cnt_id) / sizeof(classif_cnt_id[0]) +
 	sizeof(traffic_cnt_id) / sizeof(traffic_cnt_id[0])];
 
@@ -1468,7 +1468,7 @@ static int get_cnts_statistics(enum dpa_stats_op op)
 		req_params.cnts_ids = traffic_cnt_id;
 		req_params.cnts_ids_len =
 			sizeof(traffic_cnt_id) / sizeof(traffic_cnt_id[0]);
-#if defined(B4860)
+#if defined(FMAN_V3H)
 		err = ceetm_get_counters_sync(req_params, &cnts_len);
 		if (err < 0)
 			return err;
@@ -1480,7 +1480,7 @@ static int get_cnts_statistics(enum dpa_stats_op op)
 		}
 		printf("\nSuccessfully created DPA Stats sync request\n");
 		print_traffic_dpa_stats_cnts();
-#endif
+#endif /* defined(FMAN_V3H) */
 		break;
 
 	case dpa_traffic_stats_get_async:
