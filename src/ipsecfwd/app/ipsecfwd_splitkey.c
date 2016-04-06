@@ -162,6 +162,18 @@ int generate_splitkey(void)
 	struct qm_fd fd;
 	int bufsize;
 
+	if (sec_get_of_era() > RTA_SEC_ERA_5) {
+		alg_key = __dma_mem_memalign(L1_CACHE_BYTES, 60);
+		if (alg_key == NULL) {
+			fprintf(stderr, "error: %s: No More Buffers "
+				" left for key\n", __func__);
+		return -ENOMEM;
+		}
+		memset(alg_key, 0, 60);
+		memcpy(alg_key, def_auth_key, 20);
+		g_split_key = alg_key;
+		return 0;
+	}
 	job_desc = __dma_mem_memalign(L1_CACHE_BYTES, 256);
 	if (job_desc == NULL) {
 		fprintf(stderr, "error: %s: No More Buffers left for"

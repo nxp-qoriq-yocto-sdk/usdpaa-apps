@@ -26,6 +26,7 @@
 
 #include "ipsec/ipsec_encap.h"
 #include "ipsec/ipsec_decap.h"
+#include "ipsec/ipsec_sec.h"
 
 #define ENTRIES 1024
 #define ENTRIES_POOL_SIZE (ENTRIES << 1)
@@ -314,7 +315,10 @@ int32_t ipsec_tunnel_create(struct ipsec_tunnel_config_entry_t *config,
 			    uint32_t *next_hop_addr, uint32_t mode)
 {
 	config->aalg->alg_key_ptr = g_split_key;
-	config->aalg->alg_key_len = 40;
+	if (sec_get_of_era() > RTA_SEC_ERA_5)
+		config->aalg->alg_key_len = 20;
+	else
+		config->aalg->alg_key_len = 40;
 
 	if (mode == ENCRYPT) {
 		return ipsec_tunnel_encap_init(config, next_hop_addr,
