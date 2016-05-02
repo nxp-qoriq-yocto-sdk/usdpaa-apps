@@ -315,7 +315,7 @@ int32_t ipsec_tunnel_create(struct ipsec_tunnel_config_entry_t *config,
 			    uint32_t *next_hop_addr, uint32_t mode)
 {
 	config->aalg->alg_key_ptr = g_split_key;
-	if (sec_get_of_era() > RTA_SEC_ERA_5)
+	if (rta_sec_era > RTA_SEC_ERA_5)
 		config->aalg->alg_key_len = 20;
 	else
 		config->aalg->alg_key_len = 40;

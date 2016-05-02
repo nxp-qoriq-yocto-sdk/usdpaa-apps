@@ -162,7 +162,7 @@ int generate_splitkey(void)
 	struct qm_fd fd;
 	int bufsize;
 
-	if (sec_get_of_era() > RTA_SEC_ERA_5) {
+	if (rta_sec_era > RTA_SEC_ERA_5) {
 		alg_key = __dma_mem_memalign(L1_CACHE_BYTES, 60);
 		if (alg_key == NULL) {
 			fprintf(stderr, "error: %s: No More Buffers "
