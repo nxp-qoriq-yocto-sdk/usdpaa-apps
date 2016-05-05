@@ -1589,9 +1589,8 @@ static int ppac_cli_classif_rem_cmd(int argc, char *argv[])
 						argv[i]);
 				return -EINVAL;
 			}
-			for (j = IPv4_LEN - 1; j >= 0; j--)
-				key_ipv4[pos++] = (addr4.sin_addr.s_addr >>
-						(j * 8)) & 0xFF;
+			*((u32*) &key_ipv4[pos]) = addr4.sin_addr.s_addr;
+			pos += IPv4_LEN;
 		}
 
 		if (!strcmp(argv[i], "TCP") ||
