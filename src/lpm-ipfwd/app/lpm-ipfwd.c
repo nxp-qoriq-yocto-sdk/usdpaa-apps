@@ -41,6 +41,10 @@
 #include <mqueue.h>
 #include <netinet/if_ether.h>
 
+#ifdef NON_FMC_SUPPORT
+static inline void ppam_rx_hash_cb(struct ppam_rx_hash *p,
+				   const struct qm_dqrr_entry *dqrr);
+#endif
 /** \brief	Holds all IP-related data structures */
 struct ip_stack_t {
 	struct ip_statistics_t *ip_stats;	/**< IPv4 Statistics */
@@ -717,6 +721,9 @@ static inline void ppam_rx_default_cb(struct ppam_rx_default *p,
 				      struct ppam_interface *_if,
 				      const struct qm_dqrr_entry *dqrr)
 {
+#ifdef NON_FMC_SUPPORT
+	ppam_rx_hash_cb((struct ppam_rx_hash *)p, dqrr);
+#else
 	struct annotations_t *notes;
 	struct ether_header *eth_hdr;
 	const struct qm_fd *fd = &dqrr->fd;
@@ -756,6 +763,7 @@ static inline void ppam_rx_default_cb(struct ppam_rx_default *p,
 		TRACE("		  -> dropping unknown packet\n");
 	}
 	ppac_drop_frame(fd);
+#endif
 }
 static int ppam_tx_error_init(struct ppam_tx_error *p,
 			      struct ppam_interface *_if,
