@@ -30,7 +30,6 @@
 
 /**
  * @details  IPSec ESP encapsulation protocol-level shared descriptor.
- *           Requires an MDHA split key.
  * @ingroup sharedesc_group
  *
  * @param[in,out] descbuf    Pointer to buffer used for descriptor construction
@@ -44,9 +43,12 @@
  *      block guide for a details of the encapsulation PDB.
  * @param[in] cipherdata  Pointer to block cipher transform definitions. Valid
  *      algorithm values: one of OP_PCL_IPSEC_*
- * @param[in] authdata    Pointer to authentication transform definitions. Note
- *      that since a split key is to be used, the size of the split key itself
- *      is specified. Valid algorithm values: one of OP_PCL_IPSEC_*
+ * @param[in] authdata    Pointer to authentication transform definitions.
+ *            -For SEC Eras 1-5, an MDHA split key must be provided;
+ *            Note that the size of the split key itself must be specified.
+ *            -For SEC Eras 6+, a "normal" key must be provided; DKP (Derived
+ *            Key Protocol) will be used to compute MDHA on the fly in HW.
+ *            Valid algorithm values - one of OP_PCL_IPSEC_*
  * @return size of descriptor written in words
  **/
 static inline int cnstr_shdsc_ipsec_encap_hb(uint32_t *descbuf,
@@ -73,8 +75,11 @@ static inline int cnstr_shdsc_ipsec_encap_hb(uint32_t *descbuf,
 	COPY_DATA(p, pdb->ip_hdr, pdb->ip_hdr_len);
 	SET_LABEL(p, hdr);
 	pkeyjmp = JUMP(p, keyjmp, LOCAL_JUMP, ALL_TRUE, BOTH|SHRD);
-	KEY(p, MDHA_SPLIT_KEY, authdata->key_enc_flags, authdata->key,
-			authdata->keylen, INLINE_KEY(authdata));
+	if (rta_sec_era < RTA_SEC_ERA_6)
+		KEY(p, MDHA_SPLIT_KEY, authdata->key_enc_flags, authdata->key,
+		    authdata->keylen, INLINE_KEY(authdata));
+	else
+		__gen_auth_key(p, authdata);
 	KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
 	    cipherdata->keylen, INLINE_KEY(cipherdata));
 	SET_LABEL(p, keyjmp);
@@ -151,7 +156,10 @@ void *create_encapsulation_sec_descriptor(struct ipsec_tunnel_t *sa,
 	auth.algtype = sa->aalg->alg_type;
 	auth.key = (uintptr_t)sa->aalg->alg_key_ptr;
 	auth.keylen = sa->aalg->alg_key_len;
-	auth.key_enc_flags = ENC;
+	if (rta_sec_era < RTA_SEC_ERA_6)
+		auth.key_enc_flags = ENC;
+	else
+		auth.key_enc_flags = 0;
 	auth.key_type = RTA_DATA_IMM;
 
 	/* Now construct */
@@ -188,7 +196,6 @@ void *create_encapsulation_sec_descriptor(struct ipsec_tunnel_t *sa,
 
 /**
  * @details IPSec ESP decapsulation protocol-level sharedesc
- *          Requires an MDHA split key.
  * @ingroup sharedesc_group
  *
  * @param[in,out] descbuf    Pointer to buffer used for descriptor construction
@@ -200,9 +207,12 @@ void *create_encapsulation_sec_descriptor(struct ipsec_tunnel_t *sa,
  *      block guide for details about the decapsulation PDB.
  * @param[in] cipherdata  Pointer to block cipher transform definitions. Valid
  *      algorithm values: one of OP_PCL_IPSEC_*
- * @param[in] authdata    Pointer to authentication transform definitions. Note
- *      that since a split key is to be used, the size of the split key itself
- *      is specified. Valid algorithm values: one of OP_PCL_IPSEC_*
+ * @param[in] authdata    Pointer to authentication transform definitions.
+ *            -For SEC Eras 1-5, an MDHA split key must be provided;
+ *            Note that the size of the split key itself must be specified.
+ *            -For SEC Eras 6+, a "normal" key must be provided; DKP (Derived
+ *            Key Protocol) will be used to compute MDHA on the fly in HW.
+ *            Valid algorithm values - one of OP_PCL_IPSEC_*
  * @return size of descriptor written in words
  **/
 static inline int cnstr_shdsc_ipsec_decap_hb(uint32_t *descbuf,
@@ -228,8 +238,11 @@ static inline int cnstr_shdsc_ipsec_decap_hb(uint32_t *descbuf,
 	__rta_copy_ipsec_decap_pdb(p, pdb, cipherdata->algtype);
 	SET_LABEL(p, hdr);
 	pkeyjmp = JUMP(p, keyjmp, LOCAL_JUMP, ALL_TRUE, BOTH|SHRD);
-	KEY(p, MDHA_SPLIT_KEY, authdata->key_enc_flags, authdata->key,
-			authdata->keylen, INLINE_KEY(authdata));
+	if (rta_sec_era < RTA_SEC_ERA_6)
+		KEY(p, MDHA_SPLIT_KEY, authdata->key_enc_flags, authdata->key,
+		    authdata->keylen, INLINE_KEY(authdata));
+	else
+		__gen_auth_key(p, authdata);
 	KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
 	    cipherdata->keylen, INLINE_KEY(cipherdata));
 	SET_LABEL(p, keyjmp);
@@ -294,7 +307,10 @@ void
 	auth.algtype = sa->aalg->alg_type;
 	auth.key = (uintptr_t)sa->aalg->alg_key_ptr;
 	auth.keylen = sa->aalg->alg_key_len;
-	auth.key_enc_flags = ENC;
+	if (rta_sec_era < RTA_SEC_ERA_6)
+		auth.key_enc_flags = ENC;
+	else
+		auth.key_enc_flags = 0;
 	auth.key_type = RTA_DATA_IMM;
 
 	/* Now construct */

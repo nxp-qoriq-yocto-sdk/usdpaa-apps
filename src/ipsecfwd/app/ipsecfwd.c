@@ -781,16 +781,18 @@ int ppam_init(void)
 		return _errno;
 	}
 
-	_errno = init_split_key_fqs();
-	if (unlikely(_errno < 0)) {
-		pr_err("Unable to initialize Split key FQs\n");
-		return _errno;
-	}
+	if (rta_sec_era < RTA_SEC_ERA_6) {
+		_errno = init_split_key_fqs();
+		if (unlikely(_errno < 0)) {
+			pr_err("Unable to initialize Split key FQs\n");
+			return _errno;
+		}
 
-	_errno = generate_splitkey();
-	if (unlikely(_errno < 0)) {
-		pr_err("Unable to genetare Split Key\n");
-		return _errno;
+		_errno = generate_splitkey();
+		if (unlikely(_errno < 0)) {
+			pr_err("Unable to genetare Split Key\n");
+			return _errno;
+		}
 	}
 
 	return 0;
@@ -820,9 +822,11 @@ void ppam_finish(void)
 			error(0, errno, "%s():mq_unlink rcv", __func__);
 	}
 
-	/* Closing splitkey FQ's */
-	teardown_fq(g_splitkey_fq_to_sec);
-	teardown_fq(g_splitkey_fq_from_sec);
+	if (rta_sec_era < RTA_SEC_ERA_6) {
+		/* Closing splitkey FQ's */
+		teardown_fq(g_splitkey_fq_to_sec);
+		teardown_fq(g_splitkey_fq_from_sec);
+	}
 
 	/* Closing SEC Rx and Tx FQ's */
 	for (i = 0; i < IPSEC_TUNNEL_ENTRIES; i++) {
