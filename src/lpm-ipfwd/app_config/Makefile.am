@@ -34,7 +34,7 @@ dist_DATA = lpm_ipfwd_22G.sh lpm_ipfwd_20G.sh lpm_ipfwd_14G.sh \
 	lpm_ipfwd_20G_1Mroutes.sh lpm_ipfwd_40G.sh lpm_ipfwd_42G.sh \
 	lpm_ipfwd_7G.sh lpm_ipfwd_t2080_42G.sh lpm_ipfwd_t2080_22G.sh \
 	lpm_ipfwd_t1024_12G.sh lpm_ipfwd_t1023_4.5G.sh lpm_ipfwd_t1042d4_4G.sh \
-	lpm_ipfwd_ls1043a_6G.sh
+	lpm_ipfwd_ls1043a_6G.sh lpm_ipfwd_ls1046a_24G.sh
 
 AM_CFLAGS := -I$(TOP_LEVEL)/src/lpm-ipfwd/lib -I$(TOP_LEVEL)/src/lpm-ipfwd/include
 
@@ -69,3 +69,5 @@ lpm_ipfwd_t1042d4_4G.sh_install = $(INSTALL_BIN)
 lpm_ipfwd_t1042d4_4G.sh_install_flags = $(INSTALL_BIN_FLAGS)
 lpm_ipfwd_ls1043a_6G.sh_install = $(INSTALL_BIN)
 lpm_ipfwd_ls1043a_6G.sh_install_flags = $(INSTALL_BIN_FLAGS)
+lpm_ipfwd_ls1046a_24G.sh_install = $(INSTALL_BIN)
+lpm_ipfwd_ls1046a_24G.sh_install_flags = $(INSTALL_BIN_FLAGS)
