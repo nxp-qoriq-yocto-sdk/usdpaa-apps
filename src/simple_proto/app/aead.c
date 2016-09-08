@@ -90,6 +90,9 @@ static void set_enc_buf_cb(struct qm_fd *fd, uint8_t *buf,
 
 	sg_in->length = rtv->ivlen + rtv->auth_only_len + crypto_info->buf_size;
 
+	for (i = 0; i < SG_IN_ENTRIES; i++)
+		cpu_to_hw_sg(&sgs_in[i]);
+
 	fd->cmd = rtv->fd_cmd;
 
 	if (CIPHER == crypto_info->mode)
@@ -123,6 +126,7 @@ static void set_dec_buf_cb(struct qm_fd *fd, uint8_t *buf,
 	addr = qm_sg_entry_get64(sg_out);
 	sgs_in = (struct qm_sg_entry *)__dma_mem_ptov(addr);
 
+	hw_sg_to_cpu(&sgs_in[3]);
 	/*
 	 * Store the address of plaintext buffer; here the decrypted buffer
 	 * will be stored
@@ -150,6 +154,8 @@ static void set_dec_buf_cb(struct qm_fd *fd, uint8_t *buf,
 	sg_out->extension = 0;
 	/* Set the proper length */
 	sg_out->length = crypto_info->buf_size;
+
+	cpu_to_hw_sg(&sgs_in[3]);
 
 	fd->cmd = rtv->fd_cmd;
 }
@@ -196,10 +202,10 @@ static int init_ref_test_vector_aead(struct test_param *crypto_info)
 
 	if (CIPHER == crypto_info->mode) {
 		memcpy(rtv->iv, aead_test_data_iv[test_offset], rtv->ivlen);
-		memcpy(rtv->seq_spi, &aead_test_data_spi[test_offset],
+		memcpy(rtv->seq_spi, aead_test_data_spi[test_offset],
 		       SPI_SIZE);
 		memcpy(rtv->seq_spi + SPI_SIZE,
-		       &aead_test_data_seq_no[test_offset], SEQNUM_SIZE);
+		       aead_test_data_seq_no[test_offset], SEQNUM_SIZE);
 
 		rtv->length = NO_OF_BITS(aead_test_data_in_len[test_offset]);
 		rtv->plaintext = aead_test_data_in[test_offset];
@@ -300,7 +306,9 @@ static void *create_descriptor(bool mode, void *params)
 					      ENCRYPT == mode ?
 							DIR_ENC : DIR_DEC);
 
-	prehdr_desc->prehdr.hi.word = shared_desc_len & SEC_PREHDR_SDLEN_MASK;
+	prehdr_desc->prehdr.hi.field.idlen =
+					shared_desc_len & SEC_PREHDR_SDLEN_MASK;
+	prehdr_desc->prehdr.hi.word = cpu_to_be32(prehdr_desc->prehdr.hi.word);
 
 	pr_debug("SEC %s shared descriptor:\n", proto->name);
 
