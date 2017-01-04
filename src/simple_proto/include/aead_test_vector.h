@@ -158,18 +158,18 @@ static uint8_t *aead_test_data_iv[] = {
 	(uint8_t[]){0x14, 0x14, 0x14, 0x14, 0x17, 0x17, 0x17, 0x17}
 };
 
-static uint32_t aead_test_data_seq_no[] = {
+static uint8_t *aead_test_data_seq_no[] = {
 	/* IPsec 3DES-CBC & HMAC-MD5-96 */
-	0x0000beef,
+	(uint8_t[]){0x00, 0x00, 0xbe, 0xef},
 	/* IPsec 3DES-CBC & HMAC-MD5-96 */
-	0x0000beef,
+	(uint8_t[]){0x00, 0x00, 0xbe, 0xef},
 };
 
-static uint32_t aead_test_data_spi[] = {
+static uint8_t *aead_test_data_spi[] = {
 	/* IPsec 3DES-CBC & HMAC-MD5-96 */
-	0x001feed,
+	(uint8_t[]){0x00, 0x01, 0xfe, 0xed},
 	/* IPsec 3DES-CBC & HMAC-MD5-96 */
-	0x001feed,
+	(uint8_t[]){0x00, 0x01, 0xfe, 0xed},
 };
 
 static uint32_t aead_test_data_in_len[] = {
